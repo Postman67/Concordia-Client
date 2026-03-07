@@ -7,40 +7,44 @@
 
 /* ─── Dark theme (default) ──────────────────────── */
 :root {
-  --bg:           #0f0d2a;
-  --surface0:     #1e1b4b;   /* Indigo 900 */
-  --surface1:     #2e2a6a;
-  --surface2:     #3730a3;   /* Indigo 700 */
-  --overlay0:     #4f46e5;   /* Indigo 600 */
-  --text:         #e0e7ff;   /* Indigo 100 */
-  --subtext0:     #a5b4fc;   /* Indigo 300 */
-  --subtext1:     #c7d2fe;   /* Indigo 200 */
-  --primary:      #4f46e5;   /* Indigo 600 */
-  --primary-hover:#4338ca;   /* Indigo 700 */
-  --primary-text: #818cf8;   /* Indigo 400 */
-  --red:          #f87171;
-  --radius:       8px;
-  --sidebar-w:    230px;
-  --msg-hover:    rgba(255,255,255,0.04);
-  --logo-filter:  brightness(0) invert(1);
+  --bg:                #0f0d2a;
+  --surface0:          #1e1b4b;   /* Indigo 900 */
+  --surface1:          #2e2a6a;
+  --surface2:          #3730a3;   /* Indigo 700 */
+  --overlay0:          #4f46e5;   /* Indigo 600 */
+  --text:              #e0e7ff;   /* Indigo 100 */
+  --subtext0:          #a5b4fc;   /* Indigo 300 */
+  --subtext1:          #c7d2fe;   /* Indigo 200 */
+  --primary:           #4f46e5;   /* Indigo 600 */
+  --primary-hover:     #4338ca;   /* Indigo 700 */
+  --primary-text:      #818cf8;   /* Indigo 400 */
+  --red:               #f87171;
+  --radius:            8px;
+  --sidebar-w:         230px;
+  --msg-hover:         rgba(255,255,255,0.04);
+  --logo-filter:       brightness(0) invert(1);
+  --server-sidebar-bg: #09081a;
+  --pill-color:        #ffffff;
 }
 
 /* ─── Light theme ───────────────────────────────── */
 body.light {
-  --bg:           #ffffff;
-  --surface0:     #f3f4f6;   /* Gray 100 */
-  --surface1:     #e5e7eb;   /* Gray 200 */
-  --surface2:     #d1d5db;   /* Gray 300 */
-  --overlay0:     #9ca3af;   /* Gray 400 */
-  --text:         #111827;   /* Gray 900 */
-  --subtext0:     #6b7280;   /* Gray 500 */
-  --subtext1:     #374151;   /* Gray 700 */
-  --primary:      #4f46e5;
-  --primary-hover:#4338ca;
-  --primary-text: #4f46e5;
-  --red:          #ef4444;
-  --msg-hover:    rgba(0,0,0,0.04);
-  --logo-filter:  none;
+  --bg:                #ffffff;
+  --surface0:          #f3f4f6;   /* Gray 100 */
+  --surface1:          #e5e7eb;   /* Gray 200 */
+  --surface2:          #d1d5db;   /* Gray 300 */
+  --overlay0:          #9ca3af;   /* Gray 400 */
+  --text:              #111827;   /* Gray 900 */
+  --subtext0:          #6b7280;   /* Gray 500 */
+  --subtext1:          #374151;   /* Gray 700 */
+  --primary:           #4f46e5;
+  --primary-hover:     #4338ca;
+  --primary-text:      #4f46e5;
+  --red:               #ef4444;
+  --msg-hover:         rgba(0,0,0,0.04);
+  --logo-filter:       none;
+  --server-sidebar-bg: #e0e7ff;
+  --pill-color:        #4f46e5;
 }
 
 html, body {
@@ -129,6 +133,45 @@ body.light .auth-card {
   gap: 0.75rem;
 }
 
+/* ─── Splash screen ─────────────────────────────── */
+#splash-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: radial-gradient(ellipse at top, #1e1b4b 0%, #0f0d2a 65%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+body.light #splash-screen {
+  background: linear-gradient(135deg, #e0e7ff 0%, #f3f4f6 100%);
+}
+#splash-screen.fade-out { opacity: 0; }
+
+.splash-logo {
+  width: 260px;
+  opacity: 0;
+  animation: splash-logo-in 0.7s 0.15s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  filter: var(--logo-filter);
+}
+.splash-tagline {
+  opacity: 0;
+  animation: splash-logo-in 0.6s 0.6s ease forwards;
+  color: var(--subtext0);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+@keyframes splash-logo-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.9); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);   }
+}
+
 /* ─── Inputs ────────────────────────────────────── */
 input[type="text"],
 input[type="email"],
@@ -212,6 +255,122 @@ input:focus {
   display: flex;
 }
 
+/* ─── Server sidebar ────────────────────────────── */
+#server-sidebar {
+  width: 72px;
+  flex-shrink: 0;
+  background: var(--server-sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 8px;
+}
+
+#server-list-icons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  width: 100%;
+  padding: 0 0 8px;
+  scrollbar-width: none;
+}
+#server-list-icons::-webkit-scrollbar { display: none; }
+
+.server-icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 56px;
+  flex-shrink: 0;
+}
+
+/* Pill indicator on the left edge */
+.server-icon-wrap::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  background: var(--pill-color);
+  border-radius: 0 4px 4px 0;
+  transition: height 0.15s ease, opacity 0.15s ease;
+  height: 0;
+  opacity: 0;
+}
+.server-icon-wrap:hover::before   { height: 20px; opacity: 1; }
+.server-icon-wrap.active::before  { height: 40px; opacity: 1; }
+
+.server-icon-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--surface0);
+  border: none;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-radius 0.2s ease, background 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+.server-icon-btn:hover {
+  border-radius: 30%;
+  background: var(--primary);
+  color: #fff;
+}
+.server-icon-btn.active {
+  border-radius: 30%;
+  background: var(--primary);
+  color: #fff;
+}
+.server-icon-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.server-sidebar-bottom {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 12px;
+  border-top: 2px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+body.light .server-sidebar-bottom { border-top-color: rgba(0,0,0,0.08); }
+
+.add-server-btn {
+  background: var(--surface0);
+  color: var(--primary-text);
+  font-size: 1.5rem;
+  font-weight: 300;
+  line-height: 1;
+}
+.add-server-btn:hover {
+  background: var(--primary);
+  color: #fff;
+  border-radius: 30%;
+}
+
+/* ─── Channel sidebar ────────────────────────────── */
 /* Sidebar */
 #sidebar {
   width: var(--sidebar-w);
@@ -226,15 +385,24 @@ input:focus {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 0.75rem 0.6rem;
+  padding: 0.55rem 0.75rem;
   border-bottom: 1px solid var(--surface1);
+  gap: 0.25rem;
 }
 
-.sidebar-icon {
-  width: 28px;
-  height: 28px;
-  object-fit: contain;
-  filter: var(--logo-filter);
+.channels-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0.75rem 0.3rem;
+}
+
+.channels-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--subtext0);
 }
 
 #channel-list {
@@ -270,15 +438,6 @@ input:focus {
 #channel-list li.active { background: var(--primary); color: #fff; font-weight: 700; }
 #channel-list li.active::before { color: rgba(255,255,255,0.7); opacity: 1; }
 
-.sidebar-footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.55rem 0.75rem;
-  border-top: 1px solid var(--surface1);
-  gap: 0.25rem;
-}
-
 .sidebar-user {
   display: flex;
   align-items: center;
@@ -288,18 +447,24 @@ input:focus {
 }
 
 .sidebar-user-avatar {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: #fff;
   flex-shrink: 0;
   text-transform: uppercase;
+  overflow: hidden;
+}
+.sidebar-user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 #current-user-label {
@@ -401,6 +566,7 @@ input:focus {
   width: 34px;
   height: 34px;
   border-radius: 50%;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;

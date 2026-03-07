@@ -192,6 +192,7 @@ async function onAuthenticated(jwt, user) {
     fedGet('/api/settings').catch(() => null),
     fedGet('/api/servers').catch(() => ({ servers: [] })),
   ]);
+  if (!token) return; // fedGet triggered logout (token expired)
   userSettings = settingsRes?.settings ?? { theme: 'dark' };
   userServers  = serversRes?.servers   ?? [];
 
@@ -212,9 +213,22 @@ async function onAuthenticated(jwt, user) {
 
 function updateUserDisplay() {
   const displayName = userSettings?.display_name || currentUser?.username || '';
-  currentUserLabel.textContent     = displayName;
-  currentUserAvatar.textContent    = displayName.slice(0, 2).toUpperCase();
-  currentUserAvatar.style.background = stringToColor(displayName);
+  const avatarUrl   = userSettings?.avatar_url ?? '';
+  currentUserLabel.textContent = displayName;
+
+  const img      = currentUserAvatar.querySelector('img');
+  const initials = currentUserAvatar.querySelector('span');
+  if (avatarUrl) {
+    img.src = avatarUrl;
+    img.style.display = '';
+    initials.style.display = 'none';
+    currentUserAvatar.style.background = 'transparent';
+  } else {
+    img.style.display = 'none';
+    initials.textContent = displayName.slice(0, 2).toUpperCase();
+    initials.style.display = '';
+    currentUserAvatar.style.background = stringToColor(displayName);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -538,19 +552,42 @@ function appendMessage(msg, doScroll = true) {
   const time = createdAt ? new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
   const initials = username.slice(0, 2);
   const avatarColor = stringToColor(username);
+  const avatarUrl = msg.user?.avatar_url ?? '';
 
   const el = document.createElement('div');
   el.className = 'message';
-  el.innerHTML = `
-    <div class="avatar" style="background:${avatarColor}">${escapeHtml(initials)}</div>
-    <div class="message-body">
-      <div class="message-meta">
-        <span class="message-author">${escapeHtml(username)}</span>
-        <span class="message-time">${time}</span>
-      </div>
-      <div class="message-content">${escapeHtml(msg.content)}</div>
+
+  // Build avatar element safely — shows PFP if available, falls back to initials
+  const avatarEl = document.createElement('div');
+  avatarEl.className = 'avatar';
+  if (avatarUrl) {
+    const img = document.createElement('img');
+    img.src = avatarUrl;
+    img.alt = initials;
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover';
+    img.addEventListener('error', () => {
+      img.remove();
+      avatarEl.style.background = avatarColor;
+      avatarEl.textContent = initials;
+    });
+    avatarEl.appendChild(img);
+  } else {
+    avatarEl.style.background = avatarColor;
+    avatarEl.textContent = initials;
+  }
+
+  const bodyEl = document.createElement('div');
+  bodyEl.className = 'message-body';
+  bodyEl.innerHTML = `
+    <div class="message-meta">
+      <span class="message-author">${escapeHtml(username)}</span>
+      <span class="message-time">${time}</span>
     </div>
+    <div class="message-content">${escapeHtml(msg.content)}</div>
   `;
+
+  el.appendChild(avatarEl);
+  el.appendChild(bodyEl);
   messagesContainer.appendChild(el);
 
   if (doScroll) scrollToBottom();
@@ -740,13 +777,28 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-// ─── Auto-restore session on startup ────────────────────────────────────────
+// ─── Splash + auto-restore ───────────────────────────────────────────────────
 (async () => {
+  const splash = document.getElementById('splash-screen');
+  const MIN_MS = 1700;
+  const t0     = Date.now();
+
   const savedToken = localStorage.getItem('auth_token');
   const savedUser  = JSON.parse(localStorage.getItem('auth_user') ?? 'null');
+
+  let authed = false;
   if (savedToken && savedUser) {
     await onAuthenticated(savedToken, savedUser);
+    authed = !!token; // null if fedGet triggered a 401 logout
   }
+
+  // Ensure animation has enough time to play
+  const remaining = MIN_MS - (Date.now() - t0);
+  if (remaining > 0) await new Promise(r => setTimeout(r, remaining));
+
+  if (!authed) authScreen.classList.remove('hidden');
+  splash.classList.add('fade-out');
+  splash.addEventListener('transitionend', () => splash.remove(), { once: true });
 })();
 
 // Deterministic colour from username string (for avatar backgrounds)
