@@ -396,21 +396,49 @@ body.light .server-list-divider { background: rgba(0,0,0,0.1); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.55rem 0.75rem;
+  padding: 0 0.5rem 0 0;
   border-bottom: 1px solid var(--surface1);
   gap: 0.25rem;
+  min-width: 0;
 }
 
-.channels-label {
-  font-size: 0.72rem;
+.server-name-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.95rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--subtext0);
+  color: var(--text);
+  padding: 0.6rem 0.5rem 0.6rem 0.75rem;
+  border-radius: var(--radius);
+  transition: background 0.1s;
+  text-align: left;
+}
+.server-name-btn:hover:not(:disabled) { background: var(--surface1); }
+.server-name-btn:disabled { cursor: default; opacity: 0.5; }
+
+#server-name-label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
+}
+
+.server-name-chevron {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.6;
+  transition: transform 0.15s;
+}
+.server-name-btn[data-open="true"] .server-name-chevron {
+  transform: rotate(180deg);
 }
 
 .sidebar-footer {

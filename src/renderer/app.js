@@ -55,6 +55,7 @@ const btnConfirmLeaveServer= document.getElementById('btn-confirm-leave-server')
 
 // Channel sidebar
 const serverNameLabel  = document.getElementById('server-name-label');
+const btnServerName    = document.getElementById('btn-server-name');
 const channelList      = document.getElementById('channel-list');
 const currentUserLabel = document.getElementById('current-user-label');
 const currentUserAvatar= document.getElementById('current-user-avatar');
@@ -312,6 +313,7 @@ let contextMenuTargetId = null;
 
 function openServerContextMenu(x, y, fedServerId) {
   contextMenuTargetId = fedServerId;
+  btnServerName.dataset.open = 'true';
   serverContextMenu.classList.remove('hidden');
 
   // Keep menu inside viewport
@@ -324,8 +326,20 @@ function openServerContextMenu(x, y, fedServerId) {
 
 function closeServerContextMenu() {
   serverContextMenu.classList.add('hidden');
+  btnServerName.dataset.open = 'false';
   contextMenuTargetId = null;
 }
+
+// Wire up the server name button → opens dropdown anchored below the header
+btnServerName.addEventListener('click', () => {
+  if (!activeServerId) return;
+  if (!serverContextMenu.classList.contains('hidden')) {
+    closeServerContextMenu();
+    return;
+  }
+  const rect = btnServerName.getBoundingClientRect();
+  openServerContextMenu(rect.left, rect.bottom + 4, activeServerId);
+});
 
 // Close on any click outside
 document.addEventListener('click', (e) => {
@@ -411,6 +425,7 @@ btnConfirmLeaveServer.addEventListener('click', async () => {
       typingUsers     = {};
       currentUserRole = 'member';
       serverNameLabel.textContent = 'Channels';
+      btnServerName.disabled = true;
       channelList.innerHTML       = '';
       messagesContainer.innerHTML = '';
       channelView.classList.add('hidden');
@@ -455,6 +470,7 @@ async function selectServer(fedServerId, restoreChannelId = null) {
 
   // Show cached server_name immediately while we wait for the join response
   serverNameLabel.textContent = srv.server_name || 'Channels';
+  btnServerName.disabled = false;
 
   // Reset placeholder to default text before connecting
   noChannelPlaceholder.querySelector('p').textContent = 'Select a channel to start chatting';
@@ -898,6 +914,7 @@ btnLogout.addEventListener('click', () => {
   channelList.innerHTML       = '';
   serverListIcons.innerHTML   = '';
   serverNameLabel.textContent = 'Channels';
+  btnServerName.disabled = true;
   currentUserRole             = 'member';
   btnNewChannel.style.display = 'none';
   btnDeleteChannel.style.display = 'none';
