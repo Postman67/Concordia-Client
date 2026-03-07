@@ -255,11 +255,16 @@ async function onAuthenticated(jwt, user) {
   // Server IDs are Federation UUIDs (strings) — do NOT coerce with Number().
   // Channel IDs are still integers from the chat server.
   const lastServerId  = localStorage.getItem('last_server_id') || null;
-  const lastChannelId = Number(localStorage.getItem('last_channel_id')) || null;
   const startServer   = lastServerId && userServers.find(s => String(s.id) === String(lastServerId))
                         ? lastServerId
                         : userServers.length > 0 ? userServers[0].id : null;
-  if (startServer) await selectServer(startServer, lastChannelId);
+  if (startServer) {
+    // Per-server last channel (falls back to global key for backwards compat)
+    const lastChannelId = Number(localStorage.getItem(`last_channel_${startServer}`))
+                       || Number(localStorage.getItem('last_channel_id'))
+                       || null;
+    await selectServer(startServer, lastChannelId);
+  }
 }
 
 function updateUserDisplay() {
@@ -719,6 +724,9 @@ async function selectServer(fedServerId, restoreChannelId = null) {
   const srv = userServers.find((s) => s.id === fedServerId);
   if (!srv) return;
 
+  // No-op if the user clicks the server they're already on
+  if (fedServerId === activeServerId) return;
+
   if (socket) { socket.disconnect(); socket = null; }
 
   // Reset channel/message state
@@ -735,6 +743,10 @@ async function selectServer(fedServerId, restoreChannelId = null) {
   activeServerUrl = buildServerUrl(srv.server_address);
   localStorage.setItem('last_server_id', fedServerId);
 
+  // Resolve which channel to restore: explicit arg > per-server persisted > null
+  const channelToRestore = restoreChannelId
+    ?? (Number(localStorage.getItem(`last_channel_${fedServerId}`)) || null);
+
   // Show cached server_name immediately while we wait for the join response
   serverNameLabel.textContent = srv.server_name || 'Channels';
   btnServerName.disabled = false;
@@ -746,31 +758,34 @@ async function selectServer(fedServerId, restoreChannelId = null) {
   renderServerSidebar();
   connectSocket();
 
-  // Notify server this user is a member (idempotent) and read back the real server name
+  // Notify server this user is a member (idempotent), get back the server name and
+  // the caller's effective role in one round-trip.
   try {
     const joinRes = await apiPost('/api/server/join', {});
     const realName = joinRes?.server?.name;
     if (realName) {
       serverNameLabel.textContent = realName;
-      // Update local cache if changed
       if (srv.server_name !== realName) {
         srv.server_name = realName;
         fedPatch(`/api/servers/${fedServerId}`, { server_name: realName }).catch(() => {});
       }
     }
+    // join now returns the caller's effective role directly
+    if (joinRes?.role) currentUserRole = joinRes.role;
   } catch (_) {}
 
-  // Fetch current user's role on this server.
-  // Normalize both sides to strings so integer IDs and UUID strings compare correctly.
+  // Confirm role via GET /api/server/@me which returns `effective_role`.
+  // This handles the admin_user_id override case where a user's DB role is
+  // "member" but they are the designated admin.
   try {
-    const { members } = await apiGet('/api/server/members');
-    const me = members?.find(m => String(m.user_id) === String(currentUser.id));
-    currentUserRole = me?.role ?? 'member';
-  } catch (_) { currentUserRole = 'member'; }
+    const me = await apiGet('/api/server/@me');
+    currentUserRole = me?.effective_role ?? me?.role ?? currentUserRole;
+  } catch (_) { /* keep role from join response */ }
+
   btnNewChannel.style.display = (currentUserRole === 'moderator' || currentUserRole === 'admin') ? '' : 'none';
   ctxServerSettings.style.display = currentUserRole === 'admin' ? '' : 'none';
 
-  await loadChannels(restoreChannelId);
+  await loadChannels(channelToRestore);
 }
 
 function buildServerUrl(address) {
@@ -850,10 +865,11 @@ async function loadChannels(restoreChannelId = null) {
   try {
     channels = await apiGet('/api/channels');
     renderChannelList();
-    // Restore last channel if valid for this server, else leave unselected
-    if (restoreChannelId && channels.find(c => c.id === restoreChannelId)) {
-      selectChannel(restoreChannelId);
-    }
+    // Restore last channel if valid, otherwise fall back to first channel
+    const target = (restoreChannelId && channels.find(c => c.id === restoreChannelId))
+      ? restoreChannelId
+      : channels[0]?.id ?? null;
+    if (target) selectChannel(target);
   } catch (err) {
     console.error('Failed to load channels:', err);
     showServerError('Unable to connect to server');
@@ -913,6 +929,7 @@ async function selectChannel(channelId) {
 
   activeChannelId = channelId;
   localStorage.setItem('last_channel_id', channelId);
+  localStorage.setItem(`last_channel_${activeServerId}`, channelId);
 
   // Update sidebar highlight
   channelList.querySelectorAll('li').forEach((li) => {
