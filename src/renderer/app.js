@@ -259,6 +259,10 @@ async function selectServer(fedServerId) {
   activeServerId  = fedServerId;
   activeServerUrl = buildServerUrl(srv.server_address);
 
+  // Reset placeholder to default text before connecting
+  noChannelPlaceholder.querySelector('p').textContent = 'Select a channel to start chatting';
+  noChannelPlaceholder.querySelector('p').style.color = '';
+
   renderServerSidebar();
   connectSocket();
   await loadChannels();
@@ -311,6 +315,7 @@ function connectSocket() {
 
   socket.on('connect_error', (err) => {
     console.error('[socket] connection error:', err.message);
+    showServerError('Unable to connect to server');
   });
 
   socket.on('message:new', (msg) => {
@@ -348,7 +353,15 @@ async function loadChannels() {
     renderChannelList();
   } catch (err) {
     console.error('Failed to load channels:', err);
+    showServerError('Unable to connect to server');
   }
+}
+
+function showServerError(msg) {
+  channelView.classList.add('hidden');
+  noChannelPlaceholder.classList.remove('hidden');
+  noChannelPlaceholder.querySelector('p').textContent = msg;
+  noChannelPlaceholder.querySelector('p').style.color = 'var(--red)';
 }
 
 function renderChannelList() {
@@ -607,6 +620,8 @@ btnLogout.addEventListener('click', () => {
   channelList.innerHTML       = '';
   serverListIcons.innerHTML   = '';
   channelView.classList.add('hidden');
+  noChannelPlaceholder.querySelector('p').textContent = 'Select a channel to start chatting';
+  noChannelPlaceholder.querySelector('p').style.color = '';
   noChannelPlaceholder.classList.remove('hidden');
   chatScreen.classList.add('hidden');
   authScreen.classList.remove('hidden');
@@ -689,8 +704,8 @@ async function apiGet(path) {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
-    if (res.status === 401) { btnLogout.click(); return []; }
-    throw new Error(`HTTP ${res.status}`);
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message ?? data.error ?? `HTTP ${res.status}`);
   }
   return res.json();
 }
