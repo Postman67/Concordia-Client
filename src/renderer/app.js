@@ -656,6 +656,10 @@ async function loadSSMembers() {
       ssMembersList.innerHTML = '<p class="server-info-loading">No members found.</p>';
       return;
     }
+    // Seed avatar cache from server-supplied avatar_url for every member
+    members.forEach(m => {
+      if (m.avatar_url) avatarCache[String(m.user_id)] = m.avatar_url;
+    });
     members.forEach(m => {
       const row = document.createElement('div');
       row.className = 'ss-member-row';
@@ -776,12 +780,14 @@ async function selectServer(fedServerId, restoreChannelId = null) {
     if (joinRes?.role) currentUserRole = joinRes.role;
   } catch (_) {}
 
-  // Confirm role via GET /api/server/@me which returns `effective_role`.
+  // Confirm role via GET /api/server/@me which returns `effective_role` and `avatar_url`.
   // This handles the admin_user_id override case where a user's DB role is
   // "member" but they are the designated admin.
   try {
     const me = await apiGet('/api/server/@me');
     currentUserRole = me?.effective_role ?? me?.role ?? currentUserRole;
+    // Server mirrors the Federation avatar — seed the cache so messages show our PFP
+    if (me?.avatar_url) avatarCache[String(currentUser.id)] = me.avatar_url;
   } catch (_) { /* keep role from join response */ }
 
   btnNewChannel.style.display = (currentUserRole === 'moderator' || currentUserRole === 'admin') ? '' : 'none';
@@ -1180,9 +1186,13 @@ function appendMessage(msg, doScroll = true) {
   const createdAt = msg.createdAt ?? msg.created_at;
   const timestamp = createdAt ? new Date(createdAt).getTime() : Date.now();
 
-  // Update avatar cache if we see a known user's data
-  if (userId === currentUser?.id && userSettings?.avatar_url) {
-    avatarCache[userId] = userSettings.avatar_url;
+  // Update avatar cache: prefer server-supplied avatar on the message itself,
+  // then fall back to what we already have cached.
+  const msgAvatarUrl = msg.user?.avatar_url ?? msg.avatar_url ?? null;
+  if (msgAvatarUrl) {
+    avatarCache[String(userId)] = msgAvatarUrl;
+  } else if (userId === currentUser?.id && userSettings?.avatar_url) {
+    avatarCache[String(userId)] = userSettings.avatar_url;
   }
 
   const isContinuation =
