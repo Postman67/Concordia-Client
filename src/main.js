@@ -10,6 +10,7 @@ function createWindow() {
     minWidth: 700,
     minHeight: 480,
     title: 'Concordia',
+    icon: path.join(__dirname, '..', 'branding', 'Icon - Indigo.png'),
     backgroundColor: '#1e1e2e',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
