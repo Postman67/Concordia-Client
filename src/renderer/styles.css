@@ -368,6 +368,19 @@ input:focus {
 }
 body.light .server-list-divider { background: rgba(0,0,0,0.1); }
 
+/* ─── Server drag-to-reorder ─────────────────────── */
+.server-icon-wrap.dragging { opacity: 0.3; }
+
+.drag-drop-line {
+  width: 40px;
+  height: 3px;
+  background: var(--primary);
+  border-radius: 2px;
+  margin: 0 auto;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
 .add-server-btn {
   background: var(--surface0);
   color: var(--primary-text);

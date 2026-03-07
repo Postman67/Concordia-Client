@@ -24,6 +24,8 @@ let typingTimer    = null;
 let lastMsgMeta    = null;    // { userId, timestamp } — message grouping
 let avatarCache    = {};      // userId → avatarUrl
 let currentUserRole = 'member'; // 'member' | 'moderator' | 'admin'
+let dragSrcId      = null;       // federation server id being dragged
+let dragOverTarget = null;       // { id: serverId|null, insertBefore: bool }
 
 const GROUP_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -280,9 +282,11 @@ function renderServerSidebar() {
     wrap.className = 'server-icon-wrap';
     if (srv.id === activeServerId) wrap.classList.add('active');
     wrap.dataset.id = srv.id;
+    wrap.draggable = true;
 
     const btn = document.createElement('button');
     btn.className = 'server-icon-btn';
+    btn.draggable = false;
     if (srv.id === activeServerId) btn.classList.add('active');
     const label = (srv.server_name || srv.server_address).slice(0, 2).toUpperCase();
     btn.textContent = label;
@@ -297,6 +301,40 @@ function renderServerSidebar() {
       openServerContextMenu(e.clientX, e.clientY, srv.id);
     });
 
+    // Drag-to-reorder
+    wrap.addEventListener('dragstart', (e) => {
+      dragSrcId = srv.id;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(srv.id)); // required for Firefox
+      // Defer adding class so the ghost image captures the normal appearance
+      requestAnimationFrame(() => wrap.classList.add('dragging'));
+    });
+
+    wrap.addEventListener('dragend', () => {
+      document.querySelectorAll('.drag-drop-line').forEach(el => el.remove());
+      serverListIcons.querySelectorAll('.server-icon-wrap.dragging').forEach(el => el.classList.remove('dragging'));
+      dragSrcId = null;
+      dragOverTarget = null;
+    });
+
+    wrap.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (!dragSrcId || srv.id === dragSrcId) return;
+      e.dataTransfer.dropEffect = 'move';
+      const rect = wrap.getBoundingClientRect();
+      const insertBefore = e.clientY < rect.top + rect.height / 2;
+      dragOverTarget = { id: srv.id, insertBefore };
+      document.querySelectorAll('.drag-drop-line').forEach(el => el.remove());
+      const line = document.createElement('div');
+      line.className = 'drag-drop-line';
+      serverListIcons.insertBefore(line, insertBefore ? wrap : wrap.nextSibling);
+    });
+
+    wrap.addEventListener('drop', (e) => {
+      e.preventDefault();
+      finalizeDrop();
+    });
+
     wrap.appendChild(btn);
     serverListIcons.appendChild(wrap);
   });
@@ -304,6 +342,21 @@ function renderServerSidebar() {
   // Add-server entry — last item in the scrollable list
   const divider = document.createElement('div');
   divider.className = 'server-list-divider';
+  // Allow dropping onto the divider to move a server to the end
+  divider.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    if (!dragSrcId) return;
+    e.dataTransfer.dropEffect = 'move';
+    dragOverTarget = { id: null, insertBefore: false };
+    document.querySelectorAll('.drag-drop-line').forEach(el => el.remove());
+    const line = document.createElement('div');
+    line.className = 'drag-drop-line';
+    serverListIcons.insertBefore(line, divider);
+  });
+  divider.addEventListener('drop', (e) => {
+    e.preventDefault();
+    finalizeDrop();
+  });
   serverListIcons.appendChild(divider);
 
   const addWrap = document.createElement('div');
@@ -316,6 +369,42 @@ function renderServerSidebar() {
   addBtn.addEventListener('click', openAddServerModal);
   addWrap.appendChild(addBtn);
   serverListIcons.appendChild(addWrap);
+}
+
+function finalizeDrop() {
+  document.querySelectorAll('.drag-drop-line').forEach(el => el.remove());
+  const srcId  = dragSrcId;
+  const target = dragOverTarget;
+  dragSrcId      = null;
+  dragOverTarget = null;
+  if (!srcId || !target) return;
+
+  const sorted = [...userServers].sort((a, b) => a.position - b.position);
+  const fromIdx = sorted.findIndex(s => s.id === srcId);
+  if (fromIdx === -1) return;
+
+  if (target.id === null) {
+    // Move to end
+    const [moved] = sorted.splice(fromIdx, 1);
+    sorted.push(moved);
+  } else {
+    const [moved] = sorted.splice(fromIdx, 1);
+    // Re-find target index after the splice (it may have shifted)
+    const newTargetIdx = sorted.findIndex(s => s.id === target.id);
+    if (newTargetIdx === -1) { sorted.splice(fromIdx, 0, moved); return; }
+    sorted.splice(target.insertBefore ? newTargetIdx : newTargetIdx + 1, 0, moved);
+  }
+
+  sorted.forEach((s, i) => { s.position = i; });
+  userServers = sorted;
+  renderServerSidebar();
+  commitServerOrder();
+}
+
+function commitServerOrder() {
+  userServers.forEach(s =>
+    fedPatch(`/api/servers/${s.id}`, { position: s.position }).catch(() => {})
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════
