@@ -1,25 +1,29 @@
 /* ═══════════════════════════════════════════════════════════════
    Concordia – Renderer app script
-   Flows: Auth → Connect socket → Load channels → Chat
+   Auth → Federation → Server list → Per-server chat
 ═══════════════════════════════════════════════════════════════ */
 
 'use strict';
 
 // ─── Config ──────────────────────────────────────────────────────────────────
-const SERVER_URL = 'http://localhost:3000';
+const FEDERATION_URL = 'https://federation.concordiachat.com';
 
 // ─── State ───────────────────────────────────────────────────────────────────
-let token = null;
-let currentUser = null;   // { id, username }
-let socket = null;
-let channels = [];        // [{ id, name, description, created_at }]
-let activeChannelId = null;
-let messages = {};        // channelId → [msg, ...]
-let typingUsers = {};     // channelId → Set<username>
-let typingTimer = null;
-let lastMsgMeta = null;   // { userId, timestamp } — for grouping consecutive messages
+let token          = null;
+let currentUser    = null;    // { id, username, email }
+let userSettings   = null;    // { display_name, avatar_url, theme }
+let userServers    = [];      // [{ id, server_address, nickname, position }]
+let activeServerId = null;    // federation entry id
+let activeServerUrl= null;    // http:// URL for the active server
+let socket         = null;
+let channels       = [];
+let activeChannelId= null;
+let messages       = {};      // channelId → [msg, ...]
+let typingUsers    = {};      // channelId → Set<username>
+let typingTimer    = null;
+let lastMsgMeta    = null;    // { userId, timestamp } — message grouping
 
-const GROUP_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+const GROUP_TIMEOUT_MS = 10 * 60 * 1000;
 
 // ─── DOM refs ─────────────────────────────────────────────────────────────────
 const authScreen       = document.getElementById('auth-screen');
@@ -32,9 +36,14 @@ const registerForm     = document.getElementById('register-form');
 const loginError       = document.getElementById('login-error');
 const regError         = document.getElementById('reg-error');
 
-// Sidebar
+// Server sidebar
+const serverListIcons  = document.getElementById('server-list-icons');
+const btnAddServer     = document.getElementById('btn-add-server');
+
+// Channel sidebar
 const channelList      = document.getElementById('channel-list');
 const currentUserLabel = document.getElementById('current-user-label');
+const currentUserAvatar= document.getElementById('current-user-avatar');
 const btnNewChannel    = document.getElementById('btn-new-channel');
 const btnLogout        = document.getElementById('btn-logout');
 
@@ -49,7 +58,7 @@ const typingBar        = document.getElementById('typing-bar');
 const messageForm      = document.getElementById('message-form');
 const messageInput     = document.getElementById('message-input');
 
-// Modal
+// Channel modal
 const modalOverlay     = document.getElementById('modal-overlay');
 const newChannelForm   = document.getElementById('new-channel-form');
 const newChannelName   = document.getElementById('new-channel-name');
@@ -57,12 +66,21 @@ const newChannelDesc   = document.getElementById('new-channel-desc');
 const btnCancelModal   = document.getElementById('btn-cancel-modal');
 const channelError     = document.getElementById('channel-error');
 
+// Add-server modal
+const addServerOverlay  = document.getElementById('add-server-overlay');
+const addServerForm     = document.getElementById('add-server-form');
+const btnCancelAddServer= document.getElementById('btn-cancel-add-server');
+const addServerError    = document.getElementById('add-server-error');
+
 // Settings
-const settingsOverlay  = document.getElementById('settings-overlay');
-const btnSettings      = document.getElementById('btn-settings');
-const btnCloseSettings = document.getElementById('btn-close-settings');
-const themeToggle      = document.getElementById('theme-toggle');
-const currentUserAvatar= document.getElementById('current-user-avatar');
+const settingsOverlay     = document.getElementById('settings-overlay');
+const btnSettings         = document.getElementById('btn-settings');
+const btnCloseSettings    = document.getElementById('btn-close-settings');
+const themeToggle         = document.getElementById('theme-toggle');
+const settingsDisplayName = document.getElementById('settings-display-name');
+const settingsAvatarUrl   = document.getElementById('settings-avatar-url');
+const btnSaveSettings     = document.getElementById('btn-save-settings');
+const settingsSaveStatus  = document.getElementById('settings-save-status');
 
 // ═══════════════════════════════════════════════════════════════
 //  Theme
@@ -73,23 +91,51 @@ function applyTheme(isLight) {
   themeToggle.setAttribute('aria-checked', isLight ? 'true' : 'false');
 }
 
-// Init from localStorage
+// Init from localStorage until federation settings load
 applyTheme(localStorage.getItem('theme') === 'light');
 
-themeToggle.addEventListener('click', () => {
+themeToggle.addEventListener('click', async () => {
   const isLight = document.body.classList.toggle('light');
   themeToggle.setAttribute('aria-checked', isLight ? 'true' : 'false');
-  localStorage.setItem('theme', isLight ? 'light' : 'dark');
+  const newTheme = isLight ? 'light' : 'dark';
+  localStorage.setItem('theme', newTheme);
+  if (token) {
+    try { await fedPut('/api/settings', { theme: newTheme }); } catch (_) {}
+  }
 });
 
+// Settings modal open/close
 btnSettings.addEventListener('click', () => {
+  if (userSettings) {
+    settingsDisplayName.value = userSettings.display_name ?? '';
+    settingsAvatarUrl.value   = userSettings.avatar_url   ?? '';
+  }
+  settingsSaveStatus.textContent = '';
   settingsOverlay.classList.remove('hidden');
 });
-btnCloseSettings.addEventListener('click', () => {
-  settingsOverlay.classList.add('hidden');
-});
+btnCloseSettings.addEventListener('click', () => settingsOverlay.classList.add('hidden'));
 settingsOverlay.addEventListener('click', (e) => {
   if (e.target === settingsOverlay) settingsOverlay.classList.add('hidden');
+});
+
+btnSaveSettings.addEventListener('click', async () => {
+  settingsSaveStatus.textContent = '';
+  const body = {};
+  const dn = settingsDisplayName.value.trim();
+  const av = settingsAvatarUrl.value.trim();
+  if (dn) body.display_name = dn;
+  if (av) body.avatar_url   = av;
+  body.theme = document.body.classList.contains('light') ? 'light' : 'dark';
+  try {
+    const { settings } = await fedPut('/api/settings', body);
+    userSettings = settings;
+    updateUserDisplay();
+    settingsSaveStatus.textContent = 'Saved!';
+    settingsSaveStatus.style.color = 'var(--primary-text)';
+  } catch (err) {
+    settingsSaveStatus.textContent = err.message;
+    settingsSaveStatus.style.color = 'var(--red)';
+  }
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -109,10 +155,10 @@ tabBtns.forEach((btn) => {
 loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   loginError.textContent = '';
-  const username = document.getElementById('login-username').value.trim();
+  const email    = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
   try {
-    const data = await apiPost('/api/auth/login', { username, password });
+    const data = await fedPost('/api/auth/login', { email, password });
     onAuthenticated(data.token, data.user);
   } catch (err) {
     loginError.textContent = err.message;
@@ -123,37 +169,143 @@ registerForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   regError.textContent = '';
   const username = document.getElementById('reg-username').value.trim();
+  const email    = document.getElementById('reg-email').value.trim();
   const password = document.getElementById('reg-password').value;
   try {
-    const data = await apiPost('/api/auth/register', { username, password });
+    const data = await fedPost('/api/auth/register', { username, email, password });
     onAuthenticated(data.token, data.user);
   } catch (err) {
     regError.textContent = err.message;
   }
 });
 
-function onAuthenticated(jwt, user) {
+async function onAuthenticated(jwt, user) {
   token = jwt;
   currentUser = user;
-  currentUserLabel.textContent = user.username;
-  currentUserAvatar.textContent = user.username.slice(0, 2).toUpperCase();
-  currentUserAvatar.style.background = stringToColor(user.username);
+
+  // Load settings and server list from federation in parallel
+  const [settingsRes, serversRes] = await Promise.all([
+    fedGet('/api/settings').catch(() => null),
+    fedGet('/api/servers').catch(() => ({ servers: [] })),
+  ]);
+  userSettings = settingsRes?.settings ?? { theme: 'dark' };
+  userServers  = serversRes?.servers   ?? [];
+
+  // Apply federation theme (overrides localStorage)
+  const isLight = userSettings.theme === 'light';
+  applyTheme(isLight);
+  localStorage.setItem('theme', userSettings.theme ?? 'dark');
+
+  updateUserDisplay();
+
   authScreen.classList.add('hidden');
   chatScreen.classList.remove('hidden');
-  connectSocket();
-  loadChannels();
+  renderServerSidebar();
+
+  // Auto-select first server if available
+  if (userServers.length > 0) selectServer(userServers[0].id);
 }
+
+function updateUserDisplay() {
+  const displayName = userSettings?.display_name || currentUser?.username || '';
+  currentUserLabel.textContent     = displayName;
+  currentUserAvatar.textContent    = displayName.slice(0, 2).toUpperCase();
+  currentUserAvatar.style.background = stringToColor(displayName);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Server Sidebar
+// ═══════════════════════════════════════════════════════════════
+
+function renderServerSidebar() {
+  serverListIcons.innerHTML = '';
+  [...userServers].sort((a, b) => a.position - b.position).forEach((srv) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'server-icon-wrap';
+    if (srv.id === activeServerId) wrap.classList.add('active');
+    wrap.dataset.id = srv.id;
+
+    const btn = document.createElement('button');
+    btn.className = 'server-icon-btn';
+    if (srv.id === activeServerId) btn.classList.add('active');
+    const label = (srv.nickname || srv.server_address).slice(0, 2).toUpperCase();
+    btn.textContent = label;
+    btn.title = srv.nickname || srv.server_address;
+    btn.setAttribute('aria-label', srv.nickname || srv.server_address);
+    btn.style.background = srv.id === activeServerId ? '' : stringToColor(srv.nickname || srv.server_address);
+    btn.addEventListener('click', () => selectServer(srv.id));
+
+    wrap.appendChild(btn);
+    serverListIcons.appendChild(wrap);
+  });
+}
+
+async function selectServer(fedServerId) {
+  const srv = userServers.find((s) => s.id === fedServerId);
+  if (!srv) return;
+
+  if (socket) { socket.disconnect(); socket = null; }
+
+  // Reset channel/message state
+  activeChannelId = null;
+  channels = [];
+  messages = {};
+  typingUsers = {};
+  messagesContainer.innerHTML = '';
+  channelList.innerHTML = '';
+  channelView.classList.add('hidden');
+  noChannelPlaceholder.classList.remove('hidden');
+
+  activeServerId  = fedServerId;
+  activeServerUrl = buildServerUrl(srv.server_address);
+
+  renderServerSidebar();
+  connectSocket();
+  await loadChannels();
+}
+
+function buildServerUrl(address) {
+  if (/^https?:\/\//.test(address)) return address;
+  return `http://${address}`;
+}
+
+// ─── Add server ────────────────────────────────────────────────
+btnAddServer.addEventListener('click', () => {
+  document.getElementById('add-server-address').value = '';
+  document.getElementById('add-server-nickname').value = '';
+  addServerError.textContent = '';
+  addServerOverlay.classList.remove('hidden');
+});
+btnCancelAddServer.addEventListener('click', () => addServerOverlay.classList.add('hidden'));
+addServerOverlay.addEventListener('click', (e) => {
+  if (e.target === addServerOverlay) addServerOverlay.classList.add('hidden');
+});
+addServerForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  addServerError.textContent = '';
+  const server_address = document.getElementById('add-server-address').value.trim();
+  const nickname       = document.getElementById('add-server-nickname').value.trim() || undefined;
+  try {
+    const { server } = await fedPost('/api/servers', { server_address, nickname });
+    userServers.push(server);
+    addServerOverlay.classList.add('hidden');
+    renderServerSidebar();
+    selectServer(server.id);
+  } catch (err) {
+    addServerError.textContent = err.message;
+  }
+});
 
 // ═══════════════════════════════════════════════════════════════
 //  Socket.IO
 // ═══════════════════════════════════════════════════════════════
 
 function connectSocket() {
-  socket = window.concordia.createSocket(SERVER_URL, token);
+  if (!activeServerUrl) return;
+  socket = window.concordia.createSocket(activeServerUrl, token);
 
   socket.on('connect', () => {
-    console.log('[socket] connected');
-    // Re-join active channel if we reconnected mid-session
+    console.log('[socket] connected to', activeServerUrl);
     if (activeChannelId) socket.emit('channel:join', activeChannelId);
   });
 
@@ -440,15 +592,20 @@ function renderTypingBar() {
 
 btnLogout.addEventListener('click', () => {
   if (socket) socket.disconnect();
-  socket = null;
-  token = null;
-  currentUser = null;
-  activeChannelId = null;
-  channels = [];
-  messages = {};
-  typingUsers = {};
+  socket         = null;
+  token          = null;
+  currentUser    = null;
+  userSettings   = null;
+  userServers    = [];
+  activeServerId = null;
+  activeServerUrl= null;
+  activeChannelId= null;
+  channels       = [];
+  messages       = {};
+  typingUsers    = {};
   messagesContainer.innerHTML = '';
-  channelList.innerHTML = '';
+  channelList.innerHTML       = '';
+  serverListIcons.innerHTML   = '';
   channelView.classList.add('hidden');
   noChannelPlaceholder.classList.remove('hidden');
   chatScreen.classList.add('hidden');
@@ -458,11 +615,11 @@ btnLogout.addEventListener('click', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-//  REST helpers
+//  REST helpers — Federation (uses FEDERATION_URL + token)
 // ═══════════════════════════════════════════════════════════════
 
-async function apiPost(path, body) {
-  const res = await fetch(`${SERVER_URL}${path}`, {
+async function fedPost(path, body) {
+  const res = await fetch(`${FEDERATION_URL}${path}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -475,8 +632,60 @@ async function apiPost(path, body) {
   return data;
 }
 
+async function fedGet(path) {
+  const res = await fetch(`${FEDERATION_URL}${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    if (res.status === 401) { btnLogout.click(); return null; }
+    throw new Error(`HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+async function fedPut(path, body) {
+  const res = await fetch(`${FEDERATION_URL}${path}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message ?? data.error ?? 'Request failed');
+  return data;
+}
+
+async function fedDelete(path) {
+  const res = await fetch(`${FEDERATION_URL}${path}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message ?? `HTTP ${res.status}`);
+  }
+}
+
+// ─── REST helpers — active server (uses activeServerUrl + token) ──────────────
+
+async function apiPost(path, body) {
+  const res = await fetch(`${activeServerUrl}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message ?? data.error ?? 'Request failed');
+  return data;
+}
+
 async function apiGet(path) {
-  const res = await fetch(`${SERVER_URL}${path}`, {
+  const res = await fetch(`${activeServerUrl}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
@@ -487,7 +696,7 @@ async function apiGet(path) {
 }
 
 async function apiDelete(path) {
-  const res = await fetch(`${SERVER_URL}${path}`, {
+  const res = await fetch(`${activeServerUrl}${path}`, {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });

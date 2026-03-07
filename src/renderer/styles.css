@@ -131,6 +131,7 @@ body.light .auth-card {
 
 /* ─── Inputs ────────────────────────────────────── */
 input[type="text"],
+input[type="email"],
 input[type="password"] {
   width: 100%;
   padding: 0.6rem 0.8rem;
@@ -532,8 +533,14 @@ input:focus {
   justify-content: space-between;
   padding: 0.6rem 0;
   border-bottom: 1px solid var(--surface1);
+  gap: 1rem;
 }
 .setting-row:last-child { border-bottom: none; }
+
+.setting-row input[type="text"] {
+  width: 160px;
+  flex-shrink: 0;
+}
 
 .setting-label { font-weight: 600; font-size: 0.9rem; }
 .setting-desc  { font-size: 0.78rem; color: var(--subtext0); margin-top: 2px; }

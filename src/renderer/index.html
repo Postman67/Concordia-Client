@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src http://localhost:3000 ws://localhost:3000;" />
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src http://localhost:3000 ws://localhost:3000 https://federation.concordiachat.com wss://federation.concordiachat.com http://* ws://*;" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Concordia</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -26,7 +26,7 @@
 
       <!-- Login form -->
       <form id="login-form" class="auth-form">
-        <input id="login-username" type="text" placeholder="Username" autocomplete="username" required />
+        <input id="login-email" type="email" placeholder="Email" autocomplete="email" required />
         <input id="login-password" type="password" placeholder="Password" autocomplete="current-password" required />
         <button type="submit" class="btn-primary">Sign in</button>
         <p class="error-msg" id="login-error"></p>
@@ -35,6 +35,7 @@
       <!-- Register form -->
       <form id="register-form" class="auth-form hidden">
         <input id="reg-username" type="text" placeholder="Username" autocomplete="username" required />
+        <input id="reg-email" type="email" placeholder="Email" autocomplete="email" required />
         <input id="reg-password" type="password" placeholder="Password" autocomplete="new-password" required />
         <button type="submit" class="btn-primary">Create account</button>
         <p class="error-msg" id="reg-error"></p>
@@ -45,7 +46,15 @@
   <!-- ═══════════════════════ CHAT SCREEN ════════════════════════ -->
   <div id="chat-screen" class="screen hidden">
 
-    <!-- Sidebar -->
+    <!-- Server sidebar (leftmost — Discord-style icon list) -->
+    <nav id="server-sidebar">
+      <div id="server-list-icons"></div>
+      <div class="server-sidebar-bottom">
+        <button id="btn-add-server" class="server-icon-btn add-server-btn" title="Add a server">+</button>
+      </div>
+    </nav>
+
+    <!-- Channel sidebar -->
     <aside id="sidebar">
       <div class="sidebar-header">
         <img class="sidebar-icon" src="../../branding/Icon%20-%20Indigo.png" alt="Concordia" />
@@ -121,6 +130,23 @@
         <button id="btn-close-settings" class="icon-btn" title="Close">&times;</button>
       </div>
       <div class="settings-section">
+        <h3>Profile</h3>
+        <div class="setting-row">
+          <div class="setting-label-group">
+            <span class="setting-label">Display name</span>
+            <span class="setting-desc">Shown in chat instead of your username</span>
+          </div>
+          <input id="settings-display-name" type="text" placeholder="Display name" style="width:160px" />
+        </div>
+        <div class="setting-row">
+          <div class="setting-label-group">
+            <span class="setting-label">Avatar URL</span>
+            <span class="setting-desc">Link to your profile picture</span>
+          </div>
+          <input id="settings-avatar-url" type="text" placeholder="https://..." style="width:160px" />
+        </div>
+      </div>
+      <div class="settings-section">
         <h3>Appearance</h3>
         <div class="setting-row">
           <div class="setting-label-group">
@@ -132,6 +158,28 @@
           </button>
         </div>
       </div>
+      <div class="modal-actions">
+        <p class="error-msg" id="settings-save-status" style="flex:1;margin:0"></p>
+        <button id="btn-save-settings" class="btn-primary">Save changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add-server modal -->
+  <div id="add-server-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Add a Server</h2>
+      </div>
+      <form id="add-server-form">
+        <input id="add-server-address" type="text" placeholder="Address  e.g. 192.168.1.10:8080" required />
+        <input id="add-server-nickname" type="text" placeholder="Nickname (optional)" />
+        <div class="modal-actions">
+          <button type="button" id="btn-cancel-add-server" class="btn-secondary">Cancel</button>
+          <button type="submit" class="btn-primary">Add</button>
+        </div>
+        <p class="error-msg" id="add-server-error"></p>
+      </form>
     </div>
   </div>
 
