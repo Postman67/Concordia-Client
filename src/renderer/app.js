@@ -23,6 +23,7 @@ let typingUsers    = {};      // channelId → Set<username>
 let typingTimer    = null;
 let lastMsgMeta    = null;    // { userId, timestamp } — message grouping
 let avatarCache    = {};      // userId → avatarUrl
+let currentUserRole = 'member'; // 'member' | 'moderator' | 'admin'
 
 const GROUP_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -335,6 +336,14 @@ async function selectServer(fedServerId, restoreChannelId = null) {
     }
   } catch (_) {}
 
+  // Fetch current user's role on this server
+  try {
+    const { members } = await apiGet('/api/server/members');
+    const me = members?.find(m => m.user_id === currentUser.id);
+    currentUserRole = me?.role ?? 'member';
+  } catch (_) { currentUserRole = 'member'; }
+  btnNewChannel.style.display = (currentUserRole === 'moderator' || currentUserRole === 'admin') ? '' : 'none';
+
   await loadChannels(restoreChannelId);
 }
 
@@ -434,13 +443,39 @@ function showServerError(msg) {
 
 function renderChannelList() {
   channelList.innerHTML = '';
+
+  // Group channels by category, preserving API sort order (category_position, then position)
+  const byCategory = new Map(); // category key → { label, position, channels[] }
   channels.forEach((ch) => {
-    const li = document.createElement('li');
-    li.textContent = ch.name;
-    li.dataset.id = ch.id;
-    if (ch.id === activeChannelId) li.classList.add('active');
-    li.addEventListener('click', () => selectChannel(ch.id));
-    channelList.appendChild(li);
+    const key = ch.category_id ?? '__none__';
+    if (!byCategory.has(key)) {
+      byCategory.set(key, {
+        label:    ch.category_name    ?? null,
+        position: ch.category_position ?? Infinity,
+        channels: [],
+      });
+    }
+    byCategory.get(key).channels.push(ch);
+  });
+
+  // Sort categories by position; uncategorized (null) goes last
+  const sorted = [...byCategory.values()].sort((a, b) => a.position - b.position);
+
+  sorted.forEach((group) => {
+    if (group.label) {
+      const label = document.createElement('li');
+      label.className = 'channel-section-label';
+      label.textContent = group.label;
+      channelList.appendChild(label);
+    }
+    group.channels.forEach((ch) => {
+      const li = document.createElement('li');
+      li.textContent = ch.name;
+      li.dataset.id = ch.id;
+      if (ch.id === activeChannelId) li.classList.add('active');
+      li.addEventListener('click', () => selectChannel(ch.id));
+      channelList.appendChild(li);
+    });
   });
 }
 
@@ -461,9 +496,8 @@ async function selectChannel(channelId) {
   const ch = channels.find((c) => c.id === channelId);
   channelNameLabel.textContent = ch ? ch.name : channelId;
 
-  // Show/hide delete button (only for channel owner — we just show it always;
-  // the server will reject the DELETE if the user isn't the owner)
-  btnDeleteChannel.style.display = '';
+  // Show/hide delete button based on admin role
+  btnDeleteChannel.style.display = currentUserRole === 'admin' ? '' : 'none';
 
   noChannelPlaceholder.classList.add('hidden');
   channelView.classList.remove('hidden');
@@ -723,6 +757,9 @@ btnLogout.addEventListener('click', () => {
   channelList.innerHTML       = '';
   serverListIcons.innerHTML   = '';
   serverNameLabel.textContent = 'Channels';
+  currentUserRole             = 'member';
+  btnNewChannel.style.display = 'none';
+  btnDeleteChannel.style.display = 'none';
   channelView.classList.add('hidden');
   noChannelPlaceholder.querySelector('p').textContent = 'Select a channel to start chatting';
   noChannelPlaceholder.querySelector('p').style.color = '';

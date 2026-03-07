@@ -453,7 +453,9 @@ body.light .server-list-divider { background: rgba(0,0,0,0.1); }
   font-weight: 500;
 }
 #channel-list li::before { content: '# '; color: var(--overlay0); opacity: 0.7; }
+#channel-list li.channel-section-label::before { content: none; }
 #channel-list li:hover  { background: var(--surface1); color: var(--text); }
+#channel-list li.channel-section-label:hover { background: none; color: var(--subtext0); cursor: default; }
 #channel-list li.active { background: var(--primary); color: #fff; font-weight: 700; }
 #channel-list li.active::before { color: rgba(255,255,255,0.7); opacity: 1; }
 
