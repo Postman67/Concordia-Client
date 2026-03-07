@@ -217,14 +217,23 @@ async function onAuthenticated(jwt, user) {
   localStorage.setItem('auth_token', jwt);
   localStorage.setItem('auth_user', JSON.stringify(user));
 
-  // Load settings and server list from federation in parallel
-  const [settingsRes, serversRes] = await Promise.all([
+  // Load settings, server list, and fresh user profile from federation in parallel.
+  // Fetching /api/user/me ensures currentUser.id is always the current UUID, even
+  // when restoring a session that was cached before the Federation migrated to UUIDs.
+  const [settingsRes, serversRes, meRes] = await Promise.all([
     fedGet('/api/settings').catch(() => null),
     fedGet('/api/servers').catch(() => ({ servers: [] })),
+    fedGet('/api/user/me').catch(() => null),
   ]);
   if (!token) return; // fedGet triggered logout (token expired)
   userSettings = settingsRes?.settings ?? { theme: 'dark' };
   userServers  = serversRes?.servers   ?? [];
+
+  // Use the freshest user object available (guards against stale localStorage IDs)
+  if (meRes?.user) {
+    currentUser = meRes.user;
+    localStorage.setItem('auth_user', JSON.stringify(meRes.user));
+  }
 
   // Apply federation theme (overrides localStorage)
   const isLight = userSettings.theme === 'light';
@@ -235,17 +244,19 @@ async function onAuthenticated(jwt, user) {
 
   // Seed avatar cache with current user's PFP
   if (currentUser?.id && userSettings?.avatar_url) {
-    avatarCache[currentUser.id] = userSettings.avatar_url;
+    avatarCache[String(currentUser.id)] = userSettings.avatar_url;
   }
 
   authScreen.classList.add('hidden');
   chatScreen.classList.remove('hidden');
   renderServerSidebar();
 
-  // Restore last server/channel, or fall back to first server
-  const lastServerId  = Number(localStorage.getItem('last_server_id'))  || null;
+  // Restore last server/channel, or fall back to first server.
+  // Server IDs are Federation UUIDs (strings) — do NOT coerce with Number().
+  // Channel IDs are still integers from the chat server.
+  const lastServerId  = localStorage.getItem('last_server_id') || null;
   const lastChannelId = Number(localStorage.getItem('last_channel_id')) || null;
-  const startServer   = lastServerId && userServers.find(s => s.id === lastServerId)
+  const startServer   = lastServerId && userServers.find(s => String(s.id) === String(lastServerId))
                         ? lastServerId
                         : userServers.length > 0 ? userServers[0].id : null;
   if (startServer) await selectServer(startServer, lastChannelId);
@@ -668,7 +679,7 @@ async function loadSSMembers() {
         if (role === m.role) opt.selected = true;
         select.appendChild(opt);
       });
-      if (m.user_id === currentUser.id) select.disabled = true;
+      if (String(m.user_id) === String(currentUser.id)) select.disabled = true;
 
       select.addEventListener('change', async () => {
         const prevRole = m.role;
@@ -684,7 +695,7 @@ async function loadSSMembers() {
           ssMembersStatus.textContent = err.message;
           ssMembersStatus.style.color = 'var(--red)';
         } finally {
-          if (m.user_id !== currentUser.id) select.disabled = false;
+          if (String(m.user_id) !== String(currentUser.id)) select.disabled = false;
         }
       });
 
@@ -749,10 +760,11 @@ async function selectServer(fedServerId, restoreChannelId = null) {
     }
   } catch (_) {}
 
-  // Fetch current user's role on this server
+  // Fetch current user's role on this server.
+  // Normalize both sides to strings so integer IDs and UUID strings compare correctly.
   try {
     const { members } = await apiGet('/api/server/members');
-    const me = members?.find(m => m.user_id === currentUser.id);
+    const me = members?.find(m => String(m.user_id) === String(currentUser.id));
     currentUserRole = me?.role ?? 'member';
   } catch (_) { currentUserRole = 'member'; }
   btnNewChannel.style.display = (currentUserRole === 'moderator' || currentUserRole === 'admin') ? '' : 'none';
@@ -815,7 +827,7 @@ function connectSocket() {
   });
 
   socket.on('typing:update', ({ channelId, user, isTyping }) => {
-    if (user.id === currentUser.id) return; // ignore self
+    if (String(user.id) === String(currentUser.id)) return; // ignore self
     if (!typingUsers[channelId]) typingUsers[channelId] = new Set();
     if (isTyping) {
       typingUsers[channelId].add(user.username);
