@@ -186,6 +186,7 @@
   <!-- Server context menu -->
   <div id="server-context-menu" class="context-menu hidden">
     <button id="ctx-server-info" class="context-menu-item">&#9432; &nbsp;Info</button>
+    <button id="ctx-server-settings" class="context-menu-item" style="display:none">&#9881; &nbsp;Server Settings</button>
     <div class="context-menu-divider"></div>
     <button id="ctx-server-leave" class="context-menu-item context-menu-item--danger">&#10005; &nbsp;Leave Server</button>
   </div>
@@ -214,6 +215,51 @@
       <div class="modal-actions">
         <button id="btn-cancel-leave-server" class="btn-secondary">Cancel</button>
         <button id="btn-confirm-leave-server" class="btn-danger">Leave</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Server settings page-modal -->
+  <div id="server-settings-overlay" class="modal-overlay hidden">
+    <div class="server-settings-modal">
+      <div class="server-settings-sidebar">
+        <p class="ss-server-name" id="ss-server-name">Server</p>
+        <button class="ss-nav-item active" data-panel="overview">Overview</button>
+        <button class="ss-nav-item" data-panel="members">Members</button>
+        <div class="ss-nav-divider"></div>
+        <button id="ss-close-btn" class="ss-nav-item ss-nav-item--danger">&#10005;&nbsp; Close</button>
+      </div>
+      <div class="server-settings-content">
+        <!-- Overview panel -->
+        <div id="ss-panel-overview" class="ss-panel">
+          <h2 class="ss-panel-title">Server Overview</h2>
+          <div class="settings-section">
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <span class="setting-label">Server Name</span>
+                <span class="setting-desc">The display name for this server</span>
+              </div>
+              <input id="ss-name" type="text" placeholder="Server name" maxlength="100" style="width:200px" />
+            </div>
+            <div class="setting-row">
+              <div class="setting-label-group">
+                <span class="setting-label">Description</span>
+                <span class="setting-desc">Short description shown in server info</span>
+              </div>
+              <textarea id="ss-description" rows="3" placeholder="Description (optional)" maxlength="500" class="ss-textarea"></textarea>
+            </div>
+          </div>
+          <div class="modal-actions" style="margin-top:0.75rem">
+            <p id="ss-overview-status" style="flex:1;margin:0;font-size:0.85rem"></p>
+            <button id="ss-btn-save-overview" class="btn-primary">Save Changes</button>
+          </div>
+        </div>
+        <!-- Members panel -->
+        <div id="ss-panel-members" class="ss-panel hidden">
+          <h2 class="ss-panel-title">Members</h2>
+          <p id="ss-members-status" style="font-size:0.85rem;min-height:1.2em;margin-bottom:0.5rem"></p>
+          <div id="ss-members-list"></div>
+        </div>
       </div>
     </div>
   </div>

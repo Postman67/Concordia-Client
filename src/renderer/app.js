@@ -42,6 +42,7 @@ const regError         = document.getElementById('reg-error');
 const serverListIcons  = document.getElementById('server-list-icons');
 const serverContextMenu    = document.getElementById('server-context-menu');
 const ctxServerInfo        = document.getElementById('ctx-server-info');
+const ctxServerSettings    = document.getElementById('ctx-server-settings');
 const ctxServerLeave       = document.getElementById('ctx-server-leave');
 const serverInfoOverlay    = document.getElementById('server-info-overlay');
 const serverInfoName       = document.getElementById('server-info-name');
@@ -96,6 +97,18 @@ const settingsDisplayName = document.getElementById('settings-display-name');
 const settingsAvatarUrl   = document.getElementById('settings-avatar-url');
 const btnSaveSettings     = document.getElementById('btn-save-settings');
 const settingsSaveStatus  = document.getElementById('settings-save-status');
+
+// Server settings overlay
+const serverSettingsOverlay = document.getElementById('server-settings-overlay');
+const ssServerNameEl        = document.getElementById('ss-server-name');
+const ssNavItems            = document.querySelectorAll('.ss-nav-item[data-panel]');
+const ssCloseBtn            = document.getElementById('ss-close-btn');
+const ssNameInput           = document.getElementById('ss-name');
+const ssDescInput           = document.getElementById('ss-description');
+const ssBtnSaveOverview     = document.getElementById('ss-btn-save-overview');
+const ssOverviewStatus      = document.getElementById('ss-overview-status');
+const ssMembersList         = document.getElementById('ss-members-list');
+const ssMembersStatus       = document.getElementById('ss-members-status');
 
 // ═══════════════════════════════════════════════════════════════
 //  Theme
@@ -316,8 +329,9 @@ function openServerContextMenu(x, y, fedServerId) {
   btnServerName.dataset.open = 'true';
   serverContextMenu.classList.remove('hidden');
 
-  // Keep menu inside viewport
-  const menuW = 170, menuH = 90;
+  // Keep menu inside viewport (measure after making visible)
+  const menuW = serverContextMenu.offsetWidth  || 170;
+  const menuH = serverContextMenu.offsetHeight || 130;
   const left = Math.min(x, window.innerWidth  - menuW - 8);
   const top  = Math.min(y, window.innerHeight - menuH - 8);
   serverContextMenu.style.left = `${left}px`;
@@ -432,6 +446,7 @@ btnConfirmLeaveServer.addEventListener('click', async () => {
       noChannelPlaceholder.classList.remove('hidden');
       btnNewChannel.style.display    = 'none';
       btnDeleteChannel.style.display = 'none';
+      ctxServerSettings.style.display = 'none';
       localStorage.removeItem('last_server_id');
       localStorage.removeItem('last_channel_id');
     }
@@ -441,6 +456,156 @@ btnConfirmLeaveServer.addEventListener('click', async () => {
     btnConfirmLeaveServer.disabled = false;
   }
 });
+
+// ═══════════════════════════════════════════════════════════════
+//  Server Settings
+// ═══════════════════════════════════════════════════════════════
+
+ctxServerSettings.addEventListener('click', () => {
+  closeServerContextMenu();
+  openServerSettings();
+});
+
+function openServerSettings() {
+  if (!activeServerId || currentUserRole !== 'admin') return;
+  const srv = userServers.find(s => s.id === activeServerId);
+  ssServerNameEl.textContent = srv?.server_name || 'Server';
+  switchSSPanel('overview');
+  serverSettingsOverlay.classList.remove('hidden');
+  loadSSOverview();
+}
+
+function closeServerSettings() {
+  serverSettingsOverlay.classList.add('hidden');
+}
+
+function switchSSPanel(panelId) {
+  ssNavItems.forEach(btn => {
+    const isActive = btn.dataset.panel === panelId;
+    btn.classList.toggle('active', isActive);
+    document.getElementById(`ss-panel-${btn.dataset.panel}`)?.classList.toggle('hidden', !isActive);
+  });
+}
+
+ssNavItems.forEach(btn => btn.addEventListener('click', () => {
+  switchSSPanel(btn.dataset.panel);
+  if (btn.dataset.panel === 'members') loadSSMembers();
+}));
+
+ssCloseBtn.addEventListener('click', closeServerSettings);
+serverSettingsOverlay.addEventListener('click', (e) => {
+  if (e.target === serverSettingsOverlay) closeServerSettings();
+});
+
+async function loadSSOverview() {
+  ssOverviewStatus.textContent = '';
+  ssNameInput.value = '';
+  ssDescInput.value = '';
+  try {
+    const settings = await apiGet('/api/server/settings');
+    ssNameInput.value = settings.name        ?? '';
+    ssDescInput.value = settings.description ?? '';
+  } catch (err) {
+    ssOverviewStatus.textContent = `Failed to load: ${err.message}`;
+    ssOverviewStatus.style.color = 'var(--red)';
+  }
+}
+
+ssBtnSaveOverview.addEventListener('click', async () => {
+  ssOverviewStatus.textContent = '';
+  const name        = ssNameInput.value.trim();
+  const description = ssDescInput.value.trim();
+  if (!name) {
+    ssOverviewStatus.textContent = 'Name is required.';
+    ssOverviewStatus.style.color = 'var(--red)';
+    return;
+  }
+  try {
+    const updated = await apiPatch('/api/server/settings', { name, description });
+    const srv = userServers.find(s => s.id === activeServerId);
+    if (srv) {
+      srv.server_name = updated.name;
+      fedPatch(`/api/servers/${activeServerId}`, { server_name: updated.name }).catch(() => {});
+    }
+    serverNameLabel.textContent = updated.name;
+    ssServerNameEl.textContent  = updated.name;
+    ssOverviewStatus.textContent = 'Saved!';
+    ssOverviewStatus.style.color = 'var(--primary-text)';
+  } catch (err) {
+    ssOverviewStatus.textContent = err.message;
+    ssOverviewStatus.style.color = 'var(--red)';
+  }
+});
+
+async function loadSSMembers() {
+  ssMembersStatus.textContent = '';
+  ssMembersList.innerHTML = '<p class="server-info-loading">Loading&hellip;</p>';
+  try {
+    const { members } = await apiGet('/api/server/members');
+    ssMembersList.innerHTML = '';
+    if (!members?.length) {
+      ssMembersList.innerHTML = '<p class="server-info-loading">No members found.</p>';
+      return;
+    }
+    members.forEach(m => {
+      const row = document.createElement('div');
+      row.className = 'ss-member-row';
+
+      const avatarEl = document.createElement('div');
+      avatarEl.className = 'ss-member-avatar';
+      const cached = avatarCache[m.user_id];
+      if (cached) {
+        const img = document.createElement('img');
+        img.src = cached;
+        img.alt = '';
+        avatarEl.appendChild(img);
+      } else {
+        avatarEl.textContent = m.username.slice(0, 2).toUpperCase();
+        avatarEl.style.background = stringToColor(m.username);
+      }
+
+      const nameEl = document.createElement('span');
+      nameEl.className = 'ss-member-name';
+      nameEl.textContent = m.username;
+
+      const select = document.createElement('select');
+      select.className = 'ss-member-role-select';
+      ['member', 'moderator', 'admin'].forEach(role => {
+        const opt = document.createElement('option');
+        opt.value = role;
+        opt.textContent = role.charAt(0).toUpperCase() + role.slice(1);
+        if (role === m.role) opt.selected = true;
+        select.appendChild(opt);
+      });
+      if (m.user_id === currentUser.id) select.disabled = true;
+
+      select.addEventListener('change', async () => {
+        const prevRole = m.role;
+        select.disabled = true;
+        ssMembersStatus.textContent = '';
+        try {
+          const result = await apiPut(`/api/server/members/${m.user_id}/role`, { role: select.value });
+          m.role = result.member.role;
+          ssMembersStatus.textContent = `Updated ${m.username} to ${m.role}.`;
+          ssMembersStatus.style.color = 'var(--primary-text)';
+        } catch (err) {
+          select.value = prevRole;
+          ssMembersStatus.textContent = err.message;
+          ssMembersStatus.style.color = 'var(--red)';
+        } finally {
+          if (m.user_id !== currentUser.id) select.disabled = false;
+        }
+      });
+
+      row.appendChild(avatarEl);
+      row.appendChild(nameEl);
+      row.appendChild(select);
+      ssMembersList.appendChild(row);
+    });
+  } catch (err) {
+    ssMembersList.innerHTML = `<p class="server-info-loading">Failed: ${escapeHtml(err.message)}</p>`;
+  }
+}
 
 function openAddServerModal() {
   document.getElementById('add-server-address').value = '';
@@ -500,6 +665,7 @@ async function selectServer(fedServerId, restoreChannelId = null) {
     currentUserRole = me?.role ?? 'member';
   } catch (_) { currentUserRole = 'member'; }
   btnNewChannel.style.display = (currentUserRole === 'moderator' || currentUserRole === 'admin') ? '' : 'none';
+  ctxServerSettings.style.display = currentUserRole === 'admin' ? '' : 'none';
 
   await loadChannels(restoreChannelId);
 }
@@ -918,6 +1084,7 @@ btnLogout.addEventListener('click', () => {
   currentUserRole             = 'member';
   btnNewChannel.style.display = 'none';
   btnDeleteChannel.style.display = 'none';
+  ctxServerSettings.style.display = 'none';
   channelView.classList.add('hidden');
   noChannelPlaceholder.querySelector('p').textContent = 'Select a channel to start chatting';
   noChannelPlaceholder.querySelector('p').style.color = '';
@@ -1032,6 +1199,34 @@ async function apiDelete(path) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.message ?? `HTTP ${res.status}`);
   }
+}
+
+async function apiPatch(path, body) {
+  const res = await fetch(`${activeServerUrl}${path}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message ?? data.error ?? 'Request failed');
+  return data;
+}
+
+async function apiPut(path, body) {
+  const res = await fetch(`${activeServerUrl}${path}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message ?? data.error ?? 'Request failed');
+  return data;
 }
 
 // ═══════════════════════════════════════════════════════════════
