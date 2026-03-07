@@ -65,7 +65,7 @@
         <aside id="sidebar">
           <!-- Channels header -->
           <div class="sidebar-header">
-            <span class="channels-label">Channels</span>
+            <span class="channels-label" id="server-name-label">Channels</span>
             <button id="btn-new-channel" class="icon-btn" title="New channel">+</button>
           </div>
           <ul id="channel-list"></ul>
@@ -187,7 +187,6 @@
       </div>
       <form id="add-server-form">
         <input id="add-server-address" type="text" placeholder="Address  e.g. 192.168.1.10:8080" required />
-        <input id="add-server-nickname" type="text" placeholder="Nickname (optional)" />
         <div class="modal-actions">
           <button type="button" id="btn-cancel-add-server" class="btn-secondary">Cancel</button>
           <button type="submit" class="btn-primary">Add</button>

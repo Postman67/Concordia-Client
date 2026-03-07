@@ -407,6 +407,10 @@ body.light .server-list-divider { background: rgba(0,0,0,0.1); }
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--subtext0);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .sidebar-footer {

@@ -12,7 +12,7 @@ const FEDERATION_URL = 'https://federation.concordiachat.com';
 let token          = null;
 let currentUser    = null;    // { id, username, email }
 let userSettings   = null;    // { display_name, avatar_url, theme }
-let userServers    = [];      // [{ id, server_address, nickname, position }]
+let userServers    = [];      // [{ id, server_address, server_name, position }]
 let activeServerId = null;    // federation entry id
 let activeServerUrl= null;    // http:// URL for the active server
 let socket         = null;
@@ -41,6 +41,7 @@ const regError         = document.getElementById('reg-error');
 const serverListIcons  = document.getElementById('server-list-icons');
 
 // Channel sidebar
+const serverNameLabel  = document.getElementById('server-name-label');
 const channelList      = document.getElementById('channel-list');
 const currentUserLabel = document.getElementById('current-user-label');
 const currentUserAvatar= document.getElementById('current-user-avatar');
@@ -256,11 +257,11 @@ function renderServerSidebar() {
     const btn = document.createElement('button');
     btn.className = 'server-icon-btn';
     if (srv.id === activeServerId) btn.classList.add('active');
-    const label = (srv.nickname || srv.server_address).slice(0, 2).toUpperCase();
+    const label = (srv.server_name || srv.server_address).slice(0, 2).toUpperCase();
     btn.textContent = label;
-    btn.title = srv.nickname || srv.server_address;
-    btn.setAttribute('aria-label', srv.nickname || srv.server_address);
-    btn.style.background = srv.id === activeServerId ? '' : stringToColor(srv.nickname || srv.server_address);
+    btn.title = srv.server_name || srv.server_address;
+    btn.setAttribute('aria-label', srv.server_name || srv.server_address);
+    btn.style.background = srv.id === activeServerId ? '' : stringToColor(srv.server_name || srv.server_address);
     btn.addEventListener('click', () => selectServer(srv.id));
 
     wrap.appendChild(btn);
@@ -286,7 +287,6 @@ function renderServerSidebar() {
 
 function openAddServerModal() {
   document.getElementById('add-server-address').value = '';
-  document.getElementById('add-server-nickname').value = '';
   addServerError.textContent = '';
   addServerOverlay.classList.remove('hidden');
 }
@@ -311,6 +311,9 @@ async function selectServer(fedServerId, restoreChannelId = null) {
   activeServerUrl = buildServerUrl(srv.server_address);
   localStorage.setItem('last_server_id', fedServerId);
 
+  // Show cached server_name immediately while we wait for the join response
+  serverNameLabel.textContent = srv.server_name || 'Channels';
+
   // Reset placeholder to default text before connecting
   noChannelPlaceholder.querySelector('p').textContent = 'Select a channel to start chatting';
   noChannelPlaceholder.querySelector('p').style.color = '';
@@ -318,8 +321,19 @@ async function selectServer(fedServerId, restoreChannelId = null) {
   renderServerSidebar();
   connectSocket();
 
-  // Notify server this user is a member (idempotent)
-  try { await apiPost('/api/server/join', {}); } catch (_) {}
+  // Notify server this user is a member (idempotent) and read back the real server name
+  try {
+    const joinRes = await apiPost('/api/server/join', {});
+    const realName = joinRes?.server?.name;
+    if (realName) {
+      serverNameLabel.textContent = realName;
+      // Update local cache if changed
+      if (srv.server_name !== realName) {
+        srv.server_name = realName;
+        fedPatch(`/api/servers/${fedServerId}`, { server_name: realName }).catch(() => {});
+      }
+    }
+  } catch (_) {}
 
   await loadChannels(restoreChannelId);
 }
@@ -339,9 +353,8 @@ addServerForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   addServerError.textContent = '';
   const server_address = document.getElementById('add-server-address').value.trim();
-  const nickname       = document.getElementById('add-server-nickname').value.trim() || undefined;
   try {
-    const { server } = await fedPost('/api/servers', { server_address, nickname });
+    const { server } = await fedPost('/api/servers', { server_address });
     userServers.push(server);
     addServerOverlay.classList.add('hidden');
     renderServerSidebar();
@@ -709,6 +722,7 @@ btnLogout.addEventListener('click', () => {
   messagesContainer.innerHTML = '';
   channelList.innerHTML       = '';
   serverListIcons.innerHTML   = '';
+  serverNameLabel.textContent = 'Channels';
   channelView.classList.add('hidden');
   noChannelPlaceholder.querySelector('p').textContent = 'Select a channel to start chatting';
   noChannelPlaceholder.querySelector('p').style.color = '';
@@ -746,6 +760,20 @@ async function fedGet(path) {
     throw new Error(`HTTP ${res.status}`);
   }
   return res.json();
+}
+
+async function fedPatch(path, body) {
+  const res = await fetch(`${FEDERATION_URL}${path}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message ?? data.error ?? 'Request failed');
+  return data;
 }
 
 async function fedPut(path, body) {
