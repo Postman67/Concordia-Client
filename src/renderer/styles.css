@@ -724,6 +724,20 @@ body.light .server-list-divider { background: rgba(0,0,0,0.1); }
   color: var(--text);
 }
 
+.btn-danger {
+  padding: 0.5rem 1.1rem;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--red);
+  color: #fff;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btn-danger:hover { opacity: 0.85; }
+.btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* ─── Modals (shared overlay) ───────────────────── */
 .modal-overlay {
   position: fixed;

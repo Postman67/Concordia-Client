@@ -47,6 +47,11 @@ const serverInfoOverlay    = document.getElementById('server-info-overlay');
 const serverInfoName       = document.getElementById('server-info-name');
 const serverInfoBody       = document.getElementById('server-info-body');
 const btnCloseServerInfo   = document.getElementById('btn-close-server-info');
+const leaveServerOverlay   = document.getElementById('leave-server-overlay');
+const leaveServerMessage   = document.getElementById('leave-server-message');
+const leaveServerError     = document.getElementById('leave-server-error');
+const btnCancelLeaveServer = document.getElementById('btn-cancel-leave-server');
+const btnConfirmLeaveServer= document.getElementById('btn-confirm-leave-server');
 
 // Channel sidebar
 const serverNameLabel  = document.getElementById('server-name-label');
@@ -370,16 +375,32 @@ serverInfoOverlay.addEventListener('click', (e) => {
 });
 
 // Leave
-ctxServerLeave.addEventListener('click', async () => {
+ctxServerLeave.addEventListener('click', () => {
   const fedServerId = contextMenuTargetId;
   closeServerContextMenu();
   const srv = userServers.find(s => s.id === fedServerId);
   if (!srv) return;
-  if (!confirm(`Leave "${srv.server_name || srv.server_address}"? You can re-add it later.`)) return;
+
+  leaveServerMessage.textContent = `Leave "${srv.server_name || srv.server_address}"? You can re-add it later.`;
+  leaveServerError.textContent = '';
+  btnConfirmLeaveServer.disabled = false;
+  leaveServerOverlay.dataset.targetId = fedServerId;
+  leaveServerOverlay.classList.remove('hidden');
+});
+
+btnCancelLeaveServer.addEventListener('click', () => leaveServerOverlay.classList.add('hidden'));
+leaveServerOverlay.addEventListener('click', (e) => {
+  if (e.target === leaveServerOverlay) leaveServerOverlay.classList.add('hidden');
+});
+
+btnConfirmLeaveServer.addEventListener('click', async () => {
+  const fedServerId = Number(leaveServerOverlay.dataset.targetId);
+  btnConfirmLeaveServer.disabled = true;
+  leaveServerError.textContent = '';
   try {
     await fedDelete(`/api/servers/${fedServerId}`);
+    leaveServerOverlay.classList.add('hidden');
     userServers = userServers.filter(s => s.id !== fedServerId);
-    // If we were viewing this server, reset to the next available one
     if (activeServerId === fedServerId) {
       if (socket) { socket.disconnect(); socket = null; }
       activeServerId  = null;
@@ -401,7 +422,8 @@ ctxServerLeave.addEventListener('click', async () => {
     }
     renderServerSidebar();
   } catch (err) {
-    alert(`Could not leave server: ${err.message}`);
+    leaveServerError.textContent = `Could not leave server: ${err.message}`;
+    btnConfirmLeaveServer.disabled = false;
   }
 });
 
