@@ -57,6 +57,41 @@ const newChannelDesc   = document.getElementById('new-channel-desc');
 const btnCancelModal   = document.getElementById('btn-cancel-modal');
 const channelError     = document.getElementById('channel-error');
 
+// Settings
+const settingsOverlay  = document.getElementById('settings-overlay');
+const btnSettings      = document.getElementById('btn-settings');
+const btnCloseSettings = document.getElementById('btn-close-settings');
+const themeToggle      = document.getElementById('theme-toggle');
+const currentUserAvatar= document.getElementById('current-user-avatar');
+
+// ═══════════════════════════════════════════════════════════════
+//  Theme
+// ═══════════════════════════════════════════════════════════════
+
+function applyTheme(isLight) {
+  document.body.classList.toggle('light', isLight);
+  themeToggle.setAttribute('aria-checked', isLight ? 'true' : 'false');
+}
+
+// Init from localStorage
+applyTheme(localStorage.getItem('theme') === 'light');
+
+themeToggle.addEventListener('click', () => {
+  const isLight = document.body.classList.toggle('light');
+  themeToggle.setAttribute('aria-checked', isLight ? 'true' : 'false');
+  localStorage.setItem('theme', isLight ? 'light' : 'dark');
+});
+
+btnSettings.addEventListener('click', () => {
+  settingsOverlay.classList.remove('hidden');
+});
+btnCloseSettings.addEventListener('click', () => {
+  settingsOverlay.classList.add('hidden');
+});
+settingsOverlay.addEventListener('click', (e) => {
+  if (e.target === settingsOverlay) settingsOverlay.classList.add('hidden');
+});
+
 // ═══════════════════════════════════════════════════════════════
 //  Auth
 // ═══════════════════════════════════════════════════════════════
@@ -101,6 +136,8 @@ function onAuthenticated(jwt, user) {
   token = jwt;
   currentUser = user;
   currentUserLabel.textContent = user.username;
+  currentUserAvatar.textContent = user.username.slice(0, 2).toUpperCase();
+  currentUserAvatar.style.background = stringToColor(user.username);
   authScreen.classList.add('hidden');
   chatScreen.classList.remove('hidden');
   connectSocket();

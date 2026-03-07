@@ -3,9 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src http://localhost:3000 ws://localhost:3000;" />
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src http://localhost:3000 ws://localhost:3000;" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Concordia</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -13,7 +16,7 @@
   <!-- ═══════════════════════ AUTH SCREEN ═══════════════════════ -->
   <div id="auth-screen" class="screen">
     <div class="auth-card">
-      <h1 class="logo">Concordia</h1>
+      <img class="auth-logo" src="../../branding/Wordmark%20-%20Indigo.svg" alt="Concordia" />
       <p class="tagline">Real-time chat</p>
 
       <div class="tab-row">
@@ -45,15 +48,21 @@
     <!-- Sidebar -->
     <aside id="sidebar">
       <div class="sidebar-header">
-        <span class="sidebar-title">Channels</span>
+        <img class="sidebar-icon" src="../../branding/Icon%20-%20Indigo.png" alt="Concordia" />
         <button id="btn-new-channel" class="icon-btn" title="New channel">+</button>
       </div>
 
       <ul id="channel-list"></ul>
 
       <div class="sidebar-footer">
-        <span id="current-user-label"></span>
-        <button id="btn-logout" class="icon-btn" title="Log out">⏻</button>
+        <div class="sidebar-user">
+          <div class="sidebar-user-avatar" id="current-user-avatar"></div>
+          <span id="current-user-label"></span>
+        </div>
+        <div class="sidebar-footer-actions">
+          <button id="btn-settings" class="icon-btn" title="Settings">&#9881;</button>
+          <button id="btn-logout" class="icon-btn" title="Log out">&#9211;</button>
+        </div>
       </div>
     </aside>
 
@@ -87,9 +96,11 @@
   </div>
 
   <!-- New-channel modal -->
-  <div id="modal-overlay" class="hidden">
+  <div id="modal-overlay" class="modal-overlay hidden">
     <div class="modal">
-      <h2>New Channel</h2>
+      <div class="modal-header">
+        <h2>New Channel</h2>
+      </div>
       <form id="new-channel-form">
         <input id="new-channel-name" type="text" placeholder="Channel name" required />
         <input id="new-channel-desc" type="text" placeholder="Description (optional)" />
@@ -99,6 +110,28 @@
         </div>
         <p class="error-msg" id="channel-error"></p>
       </form>
+    </div>
+  </div>
+
+  <!-- Settings modal -->
+  <div id="settings-overlay" class="modal-overlay hidden">
+    <div class="modal settings-modal">
+      <div class="modal-header">
+        <h2>Settings</h2>
+        <button id="btn-close-settings" class="icon-btn" title="Close">&times;</button>
+      </div>
+      <div class="settings-section">
+        <h3>Appearance</h3>
+        <div class="setting-row">
+          <div class="setting-label-group">
+            <span class="setting-label">Light mode</span>
+            <span class="setting-desc">Switch between dark and light theme</span>
+          </div>
+          <button id="theme-toggle" class="toggle-btn" role="switch" aria-checked="false">
+            <span class="toggle-thumb"></span>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
