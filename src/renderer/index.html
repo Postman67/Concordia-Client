@@ -52,18 +52,29 @@
   <!-- ═══════════════════════ CHAT SCREEN ════════════════════════ -->
   <div id="chat-screen" class="screen hidden">
 
-    <!-- Server sidebar (leftmost — Discord-style icon list) -->
-    <nav id="server-sidebar">
-      <div id="server-list-icons"></div>
-      <div class="server-sidebar-bottom">
-        <button id="btn-add-server" class="server-icon-btn add-server-btn" title="Add a server">+</button>
-      </div>
-    </nav>
+    <!-- Left panel: server icons + channels + user banner -->
+    <div id="left-panel">
+      <div id="left-sidebars">
 
-    <!-- Channel sidebar -->
-    <aside id="sidebar">
-      <!-- User banner at top -->
-      <div class="sidebar-header">
+        <!-- Server sidebar (leftmost — Discord-style icon list) -->
+        <nav id="server-sidebar">
+          <div id="server-list-icons"></div>
+        </nav>
+
+        <!-- Channel sidebar -->
+        <aside id="sidebar">
+          <!-- Channels header -->
+          <div class="sidebar-header">
+            <span class="channels-label">Channels</span>
+            <button id="btn-new-channel" class="icon-btn" title="New channel">+</button>
+          </div>
+          <ul id="channel-list"></ul>
+        </aside>
+
+      </div>
+
+      <!-- User banner (full bottom of left panel) -->
+      <div class="sidebar-footer">
         <div class="sidebar-user">
           <div class="sidebar-user-avatar" id="current-user-avatar">
             <img alt="" style="display:none" />
@@ -76,15 +87,7 @@
           <button id="btn-logout" class="icon-btn" title="Log out">&#9211;</button>
         </div>
       </div>
-
-      <!-- Channels section header -->
-      <div class="channels-header">
-        <span class="channels-label">Channels</span>
-        <button id="btn-new-channel" class="icon-btn" title="New channel">+</button>
-      </div>
-
-      <ul id="channel-list"></ul>
-    </aside>
+    </div>
 
     <!-- Main pane -->
     <main id="chat-pane">

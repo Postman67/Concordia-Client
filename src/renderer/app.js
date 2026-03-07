@@ -22,6 +22,7 @@ let messages       = {};      // channelId → [msg, ...]
 let typingUsers    = {};      // channelId → Set<username>
 let typingTimer    = null;
 let lastMsgMeta    = null;    // { userId, timestamp } — message grouping
+let avatarCache    = {};      // userId → avatarUrl
 
 const GROUP_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -38,7 +39,6 @@ const regError         = document.getElementById('reg-error');
 
 // Server sidebar
 const serverListIcons  = document.getElementById('server-list-icons');
-const btnAddServer     = document.getElementById('btn-add-server');
 
 // Channel sidebar
 const channelList      = document.getElementById('channel-list');
@@ -203,12 +203,22 @@ async function onAuthenticated(jwt, user) {
 
   updateUserDisplay();
 
+  // Seed avatar cache with current user's PFP
+  if (currentUser?.id && userSettings?.avatar_url) {
+    avatarCache[currentUser.id] = userSettings.avatar_url;
+  }
+
   authScreen.classList.add('hidden');
   chatScreen.classList.remove('hidden');
   renderServerSidebar();
 
-  // Auto-select first server if available
-  if (userServers.length > 0) selectServer(userServers[0].id);
+  // Restore last server/channel, or fall back to first server
+  const lastServerId  = Number(localStorage.getItem('last_server_id'))  || null;
+  const lastChannelId = Number(localStorage.getItem('last_channel_id')) || null;
+  const startServer   = lastServerId && userServers.find(s => s.id === lastServerId)
+                        ? lastServerId
+                        : userServers.length > 0 ? userServers[0].id : null;
+  if (startServer) await selectServer(startServer, lastChannelId);
 }
 
 function updateUserDisplay() {
@@ -256,9 +266,32 @@ function renderServerSidebar() {
     wrap.appendChild(btn);
     serverListIcons.appendChild(wrap);
   });
+
+  // Add-server entry — last item in the scrollable list
+  const divider = document.createElement('div');
+  divider.className = 'server-list-divider';
+  serverListIcons.appendChild(divider);
+
+  const addWrap = document.createElement('div');
+  addWrap.className = 'server-icon-wrap';
+  const addBtn = document.createElement('button');
+  addBtn.className = 'server-icon-btn add-server-btn';
+  addBtn.title = 'Add a server';
+  addBtn.setAttribute('aria-label', 'Add a server');
+  addBtn.textContent = '+';
+  addBtn.addEventListener('click', openAddServerModal);
+  addWrap.appendChild(addBtn);
+  serverListIcons.appendChild(addWrap);
 }
 
-async function selectServer(fedServerId) {
+function openAddServerModal() {
+  document.getElementById('add-server-address').value = '';
+  document.getElementById('add-server-nickname').value = '';
+  addServerError.textContent = '';
+  addServerOverlay.classList.remove('hidden');
+}
+
+async function selectServer(fedServerId, restoreChannelId = null) {
   const srv = userServers.find((s) => s.id === fedServerId);
   if (!srv) return;
 
@@ -276,6 +309,7 @@ async function selectServer(fedServerId) {
 
   activeServerId  = fedServerId;
   activeServerUrl = buildServerUrl(srv.server_address);
+  localStorage.setItem('last_server_id', fedServerId);
 
   // Reset placeholder to default text before connecting
   noChannelPlaceholder.querySelector('p').textContent = 'Select a channel to start chatting';
@@ -283,7 +317,11 @@ async function selectServer(fedServerId) {
 
   renderServerSidebar();
   connectSocket();
-  await loadChannels();
+
+  // Notify server this user is a member (idempotent)
+  try { await apiPost('/api/server/join', {}); } catch (_) {}
+
+  await loadChannels(restoreChannelId);
 }
 
 function buildServerUrl(address) {
@@ -292,12 +330,7 @@ function buildServerUrl(address) {
 }
 
 // ─── Add server ────────────────────────────────────────────────
-btnAddServer.addEventListener('click', () => {
-  document.getElementById('add-server-address').value = '';
-  document.getElementById('add-server-nickname').value = '';
-  addServerError.textContent = '';
-  addServerOverlay.classList.remove('hidden');
-});
+
 btnCancelAddServer.addEventListener('click', () => addServerOverlay.classList.add('hidden'));
 addServerOverlay.addEventListener('click', (e) => {
   if (e.target === addServerOverlay) addServerOverlay.classList.add('hidden');
@@ -312,7 +345,7 @@ addServerForm.addEventListener('submit', async (e) => {
     userServers.push(server);
     addServerOverlay.classList.add('hidden');
     renderServerSidebar();
-    selectServer(server.id);
+    selectServer(server.id, null);
   } catch (err) {
     addServerError.textContent = err.message;
   }
@@ -365,10 +398,14 @@ function connectSocket() {
 //  Channels
 // ═══════════════════════════════════════════════════════════════
 
-async function loadChannels() {
+async function loadChannels(restoreChannelId = null) {
   try {
     channels = await apiGet('/api/channels');
     renderChannelList();
+    // Restore last channel if valid for this server, else leave unselected
+    if (restoreChannelId && channels.find(c => c.id === restoreChannelId)) {
+      selectChannel(restoreChannelId);
+    }
   } catch (err) {
     console.error('Failed to load channels:', err);
     showServerError('Unable to connect to server');
@@ -401,6 +438,7 @@ async function selectChannel(channelId) {
   }
 
   activeChannelId = channelId;
+  localStorage.setItem('last_channel_id', channelId);
 
   // Update sidebar highlight
   channelList.querySelectorAll('li').forEach((li) => {
@@ -523,10 +561,16 @@ function renderMessages(channelId) {
 }
 
 function appendMessage(msg, doScroll = true) {
+  // Normalise both REST shape (user_id/username) and socket shape (user: { id, username })
   const username = msg.user?.username ?? msg.username ?? 'Unknown';
-  const userId = msg.user?.id ?? msg.user_id ?? username;
+  const userId   = msg.user?.id       ?? msg.user_id  ?? username;
   const createdAt = msg.createdAt ?? msg.created_at;
   const timestamp = createdAt ? new Date(createdAt).getTime() : Date.now();
+
+  // Update avatar cache if we see a known user's data
+  if (userId === currentUser?.id && userSettings?.avatar_url) {
+    avatarCache[userId] = userSettings.avatar_url;
+  }
 
   const isContinuation =
     lastMsgMeta &&
@@ -552,7 +596,7 @@ function appendMessage(msg, doScroll = true) {
   const time = createdAt ? new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
   const initials = username.slice(0, 2);
   const avatarColor = stringToColor(username);
-  const avatarUrl = msg.user?.avatar_url ?? '';
+  const avatarUrl = avatarCache[userId] ?? '';
 
   const el = document.createElement('div');
   el.className = 'message';
@@ -647,6 +691,9 @@ function renderTypingBar() {
 btnLogout.addEventListener('click', () => {
   localStorage.removeItem('auth_token');
   localStorage.removeItem('auth_user');
+  localStorage.removeItem('last_server_id');
+  localStorage.removeItem('last_channel_id');
+  avatarCache = {};
   if (socket) socket.disconnect();
   socket         = null;
   token          = null;

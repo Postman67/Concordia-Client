@@ -255,6 +255,19 @@ input:focus {
   display: flex;
 }
 
+/* Left panel: wraps server sidebar + channel sidebar + user banner */
+#left-panel {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+#left-sidebars {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
 /* ─── Server sidebar ────────────────────────────── */
 #server-sidebar {
   width: 72px;
@@ -345,17 +358,15 @@ input:focus {
   border-radius: inherit;
 }
 
-.server-sidebar-bottom {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 0 12px;
-  border-top: 2px solid rgba(255,255,255,0.06);
+.server-list-divider {
+  width: 32px;
+  height: 2px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 1px;
+  margin: 4px 0;
   flex-shrink: 0;
 }
-body.light .server-sidebar-bottom { border-top-color: rgba(0,0,0,0.08); }
+body.light .server-list-divider { background: rgba(0,0,0,0.1); }
 
 .add-server-btn {
   background: var(--surface0);
@@ -371,7 +382,6 @@ body.light .server-sidebar-bottom { border-top-color: rgba(0,0,0,0.08); }
 }
 
 /* ─── Channel sidebar ────────────────────────────── */
-/* Sidebar */
 #sidebar {
   width: var(--sidebar-w);
   flex-shrink: 0;
@@ -379,6 +389,7 @@ body.light .server-sidebar-bottom { border-top-color: rgba(0,0,0,0.08); }
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--surface1);
+  overflow: hidden;
 }
 
 .sidebar-header {
@@ -390,19 +401,23 @@ body.light .server-sidebar-bottom { border-top-color: rgba(0,0,0,0.08); }
   gap: 0.25rem;
 }
 
-.channels-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.5rem 0.75rem 0.3rem;
-}
-
 .channels-label {
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--subtext0);
+}
+
+.sidebar-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.55rem 0.75rem;
+  border-top: 1px solid var(--surface1);
+  gap: 0.25rem;
+  flex-shrink: 0;
+  background: var(--surface0);
 }
 
 #channel-list {
