@@ -1,18 +1,16 @@
 {
   "name": "concordia-client",
   "version": "1.0.0",
-  "description": "Concordia real-time chat client built with Electron",
-  "main": "src/main.js",
+  "description": "Concordia real-time chat client — web app hosted on Railway",
+  "main": "server.js",
   "scripts": {
-    "start": "electron ."
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",
   "license": "MIT",
-  "devDependencies": {
-    "electron": "^29.0.0"
-  },
   "dependencies": {
+    "express": "^4.19.2",
     "socket.io-client": "^4.7.5"
   }
 }

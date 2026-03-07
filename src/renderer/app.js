@@ -370,7 +370,11 @@ addServerForm.addEventListener('submit', async (e) => {
 
 function connectSocket() {
   if (!activeServerUrl) return;
-  socket = window.concordia.createSocket(activeServerUrl, token);
+  socket = io(activeServerUrl, {
+    auth: { token },
+    transports: ['websocket'],
+    autoConnect: true,
+  });
 
   socket.on('connect', () => {
     console.log('[socket] connected to', activeServerUrl);

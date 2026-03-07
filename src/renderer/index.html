@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https: data: blob:; connect-src http://localhost:3000 ws://localhost:3000 https://federation.concordiachat.com wss://federation.concordiachat.com http://* ws://*;" />
+    content="default-src 'self'; script-src 'self' https://cdn.socket.io; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https: data: blob:; connect-src https://federation.concordiachat.com wss://federation.concordiachat.com http://* ws://* https://* wss://*;" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Concordia</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -15,14 +15,14 @@
 
   <!-- ════════════════════════ SPLASH SCREEN ══════════════════════ -->
   <div id="splash-screen">
-    <img src="../../branding/Wordmark%20-%20Indigo.svg" alt="Concordia" class="splash-logo" />
+    <img src="/branding/Wordmark%20-%20Indigo.svg" alt="Concordia" class="splash-logo" />
     <p class="splash-tagline">REAL-TIME CHAT</p>
   </div>
 
   <!-- ═══════════════════════ AUTH SCREEN ═══════════════════════ -->
   <div id="auth-screen" class="screen hidden">
     <div class="auth-card">
-      <img class="auth-logo" src="../../branding/Wordmark%20-%20Indigo.svg" alt="Concordia" />
+      <img class="auth-logo" src="/branding/Wordmark%20-%20Indigo.svg" alt="Concordia" />
       <p class="tagline">Real-time chat</p>
 
       <div class="tab-row">
@@ -196,6 +196,7 @@
     </div>
   </div>
 
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
