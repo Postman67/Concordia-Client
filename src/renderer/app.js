@@ -183,6 +183,10 @@ async function onAuthenticated(jwt, user) {
   token = jwt;
   currentUser = user;
 
+  // Persist session so the app restores automatically on relaunch
+  localStorage.setItem('auth_token', jwt);
+  localStorage.setItem('auth_user', JSON.stringify(user));
+
   // Load settings and server list from federation in parallel
   const [settingsRes, serversRes] = await Promise.all([
     fedGet('/api/settings').catch(() => null),
@@ -604,6 +608,8 @@ function renderTypingBar() {
 // ═══════════════════════════════════════════════════════════════
 
 btnLogout.addEventListener('click', () => {
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('auth_user');
   if (socket) socket.disconnect();
   socket         = null;
   token          = null;
@@ -733,6 +739,15 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
+
+// ─── Auto-restore session on startup ────────────────────────────────────────
+(async () => {
+  const savedToken = localStorage.getItem('auth_token');
+  const savedUser  = JSON.parse(localStorage.getItem('auth_user') ?? 'null');
+  if (savedToken && savedUser) {
+    await onAuthenticated(savedToken, savedUser);
+  }
+})();
 
 // Deterministic colour from username string (for avatar backgrounds)
 function stringToColor(str) {
