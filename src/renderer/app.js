@@ -345,7 +345,8 @@ function closeServerContextMenu() {
 }
 
 // Wire up the server name button → opens dropdown anchored below the header
-btnServerName.addEventListener('click', () => {
+btnServerName.addEventListener('click', (e) => {
+  e.stopPropagation();
   if (!activeServerId) return;
   if (!serverContextMenu.classList.contains('hidden')) {
     closeServerContextMenu();
@@ -355,8 +356,9 @@ btnServerName.addEventListener('click', () => {
   openServerContextMenu(rect.left, rect.bottom + 4, activeServerId);
 });
 
-// Close on any click outside
+// Close on any click outside (ignore clicks on the toggle button itself)
 document.addEventListener('click', (e) => {
+  if (btnServerName.contains(e.target)) return;
   if (!serverContextMenu.contains(e.target)) closeServerContextMenu();
 });
 document.addEventListener('keydown', (e) => {
