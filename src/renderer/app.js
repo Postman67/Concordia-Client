@@ -26,6 +26,8 @@ let avatarCache    = {};      // userId → avatarUrl
 let currentUserRole = 'member'; // 'member' | 'moderator' | 'admin'
 let dragSrcId      = null;       // federation server id being dragged
 let dragOverTarget = null;       // { id: serverId|null, insertBefore: bool }
+let chDragSrcId    = null;       // channel id being dragged
+let chDropInfo     = null;       // { toCategoryId: number|null, beforeChannelId: number|null }
 
 const GROUP_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -885,16 +887,18 @@ function showServerError(msg) {
 
 function renderChannelList() {
   channelList.innerHTML = '';
+  const isAdmin = currentUserRole === 'admin';
 
   // Group channels by category, preserving API sort order (category_position, then position)
-  const byCategory = new Map(); // category key → { label, position, channels[] }
+  const byCategory = new Map(); // category key → { label, categoryId, position, channels[] }
   channels.forEach((ch) => {
     const key = ch.category_id ?? '__none__';
     if (!byCategory.has(key)) {
       byCategory.set(key, {
-        label:    ch.category_name    ?? null,
-        position: ch.category_position ?? Infinity,
-        channels: [],
+        label:      ch.category_name     ?? null,
+        categoryId: ch.category_id       ?? null,
+        position:   ch.category_position ?? Infinity,
+        channels:   [],
       });
     }
     byCategory.get(key).channels.push(ch);
@@ -903,22 +907,141 @@ function renderChannelList() {
   // Sort categories by position; uncategorized (null) goes last
   const sorted = [...byCategory.values()].sort((a, b) => a.position - b.position);
 
+  // Helper: insert a drop-line indicator before or after a DOM element
+  const showDropLine = (refEl, before) => {
+    document.querySelectorAll('.ch-drop-line').forEach(el => el.remove());
+    const line = document.createElement('li');
+    line.className = 'ch-drop-line';
+    channelList.insertBefore(line, before ? refEl : refEl.nextSibling);
+  };
+
   sorted.forEach((group) => {
     if (group.label) {
       const label = document.createElement('li');
       label.className = 'channel-section-label';
       label.textContent = group.label;
+
+      if (isAdmin) {
+        // Dropping onto the category header = insert as first item in the category
+        label.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!chDragSrcId) return;
+          const firstOther = group.channels.find(c => c.id !== chDragSrcId);
+          chDropInfo = { toCategoryId: group.categoryId, beforeChannelId: firstOther?.id ?? null };
+          showDropLine(label, false);
+        });
+        label.addEventListener('drop', (e) => { e.preventDefault(); finalizeChannelDrop(); });
+      }
+
       channelList.appendChild(label);
     }
+
     group.channels.forEach((ch) => {
       const li = document.createElement('li');
       li.textContent = ch.name;
       li.dataset.id = ch.id;
       if (ch.id === activeChannelId) li.classList.add('active');
       li.addEventListener('click', () => selectChannel(ch.id));
+
+      if (isAdmin) {
+        li.draggable = true;
+
+        li.addEventListener('dragstart', (e) => {
+          chDragSrcId = ch.id;
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', String(ch.id));
+          requestAnimationFrame(() => li.classList.add('ch-dragging'));
+        });
+
+        li.addEventListener('dragend', () => {
+          document.querySelectorAll('.ch-drop-line').forEach(el => el.remove());
+          channelList.querySelectorAll('.ch-dragging').forEach(el => el.classList.remove('ch-dragging'));
+          chDragSrcId = null;
+          chDropInfo  = null;
+        });
+
+        li.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!chDragSrcId || ch.id === chDragSrcId) return;
+          e.dataTransfer.dropEffect = 'move';
+          const rect = li.getBoundingClientRect();
+          if (e.clientY < rect.top + rect.height / 2) {
+            // Upper half → insert before this channel
+            chDropInfo = { toCategoryId: group.categoryId, beforeChannelId: ch.id };
+            showDropLine(li, true);
+          } else {
+            // Lower half → insert before the next channel in this category (or append)
+            const idx  = group.channels.indexOf(ch);
+            const next = group.channels.slice(idx + 1).find(c => c.id !== chDragSrcId);
+            chDropInfo = { toCategoryId: group.categoryId, beforeChannelId: next?.id ?? null };
+            showDropLine(li, false);
+          }
+        });
+
+        li.addEventListener('drop', (e) => { e.preventDefault(); finalizeChannelDrop(); });
+      }
+
       channelList.appendChild(li);
     });
   });
+}
+
+function finalizeChannelDrop() {
+  const srcId = chDragSrcId;
+  const drop  = chDropInfo;
+  chDragSrcId = null;
+  chDropInfo  = null;
+  document.querySelectorAll('.ch-drop-line').forEach(el => el.remove());
+  channelList.querySelectorAll('.ch-dragging').forEach(el => el.classList.remove('ch-dragging'));
+  if (!srcId || !drop) return;
+
+  const srcCh = channels.find(c => c.id === srcId);
+  if (!srcCh) return;
+
+  const { toCategoryId, beforeChannelId } = drop;
+  const oldCategoryId = srcCh.category_id ?? null;
+
+  // Move src to new category
+  srcCh.category_id = toCategoryId;
+
+  // Re-order within toCategoryId: remove src then insert at target index
+  let toCatChans = channels
+    .filter(c => (c.category_id ?? null) === toCategoryId)
+    .sort((a, b) => a.position - b.position)
+    .filter(c => c.id !== srcId);
+
+  if (beforeChannelId !== null) {
+    const insertIdx = toCatChans.findIndex(c => c.id === beforeChannelId);
+    toCatChans.splice(insertIdx === -1 ? toCatChans.length : insertIdx, 0, srcCh);
+  } else {
+    toCatChans.push(srcCh);
+  }
+  toCatChans.forEach((c, i) => { c.position = i; });
+
+  // Re-index old category if the channel moved out of it
+  if (oldCategoryId !== toCategoryId) {
+    channels
+      .filter(c => (c.category_id ?? null) === oldCategoryId)
+      .sort((a, b) => a.position - b.position)
+      .forEach((c, i) => { c.position = i; });
+  }
+
+  // Optimistic re-render
+  renderChannelList();
+
+  // Persist via API; update local state from server response
+  const payload = channels.map(c => ({
+    id: c.id,
+    category_id: c.category_id ?? null,
+    position: c.position,
+  }));
+  apiPut('/api/channels/reorder', payload)
+    .then(updated => { channels = updated; renderChannelList(); })
+    .catch(async () => {
+      try { channels = await apiGet('/api/channels'); renderChannelList(); } catch (_) {}
+    });
 }
 
 async function selectChannel(channelId) {

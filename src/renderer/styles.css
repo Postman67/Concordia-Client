@@ -500,6 +500,22 @@ body.light .server-list-divider { background: rgba(0,0,0,0.1); }
 #channel-list li.active { background: var(--primary); color: #fff; font-weight: 700; }
 #channel-list li.active::before { color: rgba(255,255,255,0.7); opacity: 1; }
 
+/* ─── Channel drag-to-reorder (admin only) ────────────── */
+#channel-list li[draggable="true"] { cursor: grab; }
+#channel-list li[draggable="true"]:active { cursor: grabbing; }
+#channel-list li.ch-dragging { opacity: 0.35; }
+#channel-list li.ch-drop-line {
+  height: 2px;
+  background: var(--primary);
+  border-radius: 2px;
+  margin: 1px 0.35rem;
+  padding: 0;
+  min-height: unset;
+  pointer-events: none;
+  cursor: default;
+}
+#channel-list li.ch-drop-line::before { content: none; }
+
 .sidebar-user {
   display: flex;
   align-items: center;

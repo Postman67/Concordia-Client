@@ -4,7 +4,9 @@
 > Clients log in via `https://federation.concordiachat.com` and pass the resulting JWT to this server.  
 > This server stores **no passwords, no emails** — only Federation user IDs.
 
-**Last updated on:** Saturday, March 7, 2026 at 14:31:50
+**Last updated on:** Saturday, March 7, 2026 at 15:41:06
+
+> **User IDs are UUIDs** (e.g. `"a3f8c21d-7e44-4b1c-9f02-3d5e6a8b1c0f"`). The Federation issues these on registration.
 
 Base URL (default): `http://localhost:3000`
 
@@ -60,11 +62,35 @@ Joins the authenticated user to this server. Call this when a user adds the serv
 ```json
 {
   "message": "Joined server successfully.",
+  "role": "admin",
   "server": { "name": "My Concordia Server", "description": "A place to chat." }
 }
 ```
 
+> `role` is the caller's **effective role** on this server (`"member"`, `"moderator"`, or `"admin"`). Use this value to decide whether to show the server settings UI.
+
 **`401`** Missing/invalid federation token · **`500`** Server error
+
+---
+
+### `GET /api/server/@me` 🔒
+
+Returns the authenticated user's member record and effective role on this server. Call this on client startup (after the initial join) or whenever you need to refresh the user's permissions — for example, after an admin changes `admin_user_id` via `PATCH /api/server/settings`.
+
+**`200 OK`**
+```json
+{
+  "user_id": "a3f8c21d-7e44-4b1c-9f02-3d5e6a8b1c0f",
+  "username": "petersmith",
+  "role": "member",
+  "effective_role": "admin",
+  "joined_at": "2026-03-07T10:00:00.000Z"
+}
+```
+
+> `role` is the value stored in the database. `effective_role` is what the server actually enforces — it may be `"admin"` even if `role` is `"member"` when the user matches `admin_user_id` in server settings.
+
+**`401`** Missing/invalid federation token · **`404`** Not a member of this server · **`500`** Server error
 
 ---
 
@@ -76,9 +102,9 @@ Returns the list of users who have joined this server, including their role.
 ```json
 {
   "members": [
-    { "user_id": 1, "username": "petersmith", "role": "admin",     "joined_at": "2026-03-07T10:00:00.000Z" },
-    { "user_id": 2, "username": "alice",       "role": "moderator", "joined_at": "2026-03-07T10:05:00.000Z" },
-    { "user_id": 3, "username": "bob",         "role": "member",    "joined_at": "2026-03-07T10:10:00.000Z" }
+    { "user_id": "a3f8c21d-7e44-4b1c-9f02-3d5e6a8b1c0f", "username": "petersmith", "role": "admin",     "joined_at": "2026-03-07T10:00:00.000Z" },
+    { "user_id": "b1c2d3e4-1234-5678-9abc-def012345678", "username": "alice",       "role": "moderator", "joined_at": "2026-03-07T10:05:00.000Z" },
+    { "user_id": "c3d4e5f6-abcd-ef01-2345-678901234567", "username": "bob",         "role": "member",    "joined_at": "2026-03-07T10:10:00.000Z" }
   ]
 }
 ```
@@ -103,7 +129,7 @@ Assigns a role to a member. The configured admin (`admin_user_id`) cannot be dem
 
 **`200 OK`**
 ```json
-{ "member": { "user_id": 2, "username": "alice", "role": "moderator" } }
+{ "member": { "user_id": "b1c2d3e4-1234-5678-9abc-def012345678", "username": "alice", "role": "moderator" } }
 ```
 
 **`400`** Invalid role · **`401`** Unauthorized · **`403`** Not admin / cannot demote server owner · **`404`** Member not found · **`500`** Server error
@@ -119,7 +145,7 @@ Returns all admin-configurable server settings.
 {
   "name": "My Concordia Server",
   "description": "A place to chat.",
-  "admin_user_id": 42
+  "admin_user_id": "a3f8c21d-7e44-4b1c-9f02-3d5e6a8b1c0f"
 }
 ```
 
@@ -137,7 +163,7 @@ Updates one or more server settings. Only the fields you include are changed.
 |-------|------|-------|
 | `name` | string | 1–100 chars. |
 | `description` | string | 0–500 chars. |
-| `admin_user_id` | number | Non-negative integer. Federation user ID of the new admin. `0` = no admin. |
+| `admin_user_id` | string | Valid UUID (Federation user ID of the new admin), or `""` to unset. |
 
 ```json
 { "name": "Main Hub", "description": "A place to hang out." }
@@ -149,13 +175,13 @@ Updates one or more server settings. Only the fields you include are changed.
 {
   "name": "Main Hub",
   "description": "A place to hang out.",
-  "admin_user_id": 42
+  "admin_user_id": "a3f8c21d-7e44-4b1c-9f02-3d5e6a8b1c0f"
 }
 ```
 
 **`400`** Validation failed · **`401`** Unauthorized · **`403`** Not admin · **`500`** Server error
 
-> ⚠️ Changing `admin_user_id` transfers admin to another user. If you also remove the `ADMIN_USER_ID` env var, the previous admin will lose access immediately.
+> ⚠️ Changing `admin_user_id` transfers admin to another user. Pass `""` to unset. If you also remove the `ADMIN_USER_ID` env var when unsetting, you will be locked out of admin routes.
 
 ---
 
@@ -166,16 +192,17 @@ Roles control what actions a user can perform on the server.
 | Role | Permissions |
 |------|-------------|
 | `member` | Read channels, read/send messages, join server |
-| `moderator` | All of the above + create channels, rename/reposition channels and categories |
-| `admin` | All of the above + create/delete categories, delete channels, assign roles, change server settings |
+| `moderator` | All of the above + rename channels and categories |
+| `admin` | All of the above + create/delete channels and categories, reorder channels and categories, assign roles, change server settings |
 
 > The user whose `user_id` matches `admin_user_id` in the `server_settings` table is **always** treated as admin, regardless of what is stored in the `members` table. If the `ADMIN_USER_ID` environment variable is set it overrides the database value (useful for emergency recovery).
 
 ---
 
-## Categories — `/api/categories` 🔒
 
-Categories group channels in the sidebar (e.g. “Text Channels”, “Voice Channels”). Channels within a category are ordered by their `position` field.
+## Categories â€” `/api/categories` ðŸ”’
+
+Categories group channels in the sidebar (e.g. "Text Channels", "Voice Channels"). They act as top-level folders â€” no sub-categories are allowed. Channels within a category are ordered by their `position` field.
 
 ### `GET /api/categories`
 
@@ -191,19 +218,19 @@ Returns all categories ordered by position.
 
 ---
 
-### `POST /api/categories` 🔒 *(admin only)*
+### `POST /api/categories` ðŸ”’ *(admin only)*
 
-Creates a new category.
+Creates a new category. Position is auto-assigned to the end of the list unless explicitly provided.
 
 **Request body**
 
 | Field | Type | Rules |
 |-------|------|-------|
-| `name` | string | Required. 1–64 chars. |
-| `position` | number | Optional integer. Default `0`. |
+| `name` | string | Required. 1â€“64 chars. |
+| `position` | number | Optional integer. Defaults to end of list. |
 
 ```json
-{ "name": "Staff Only", "position": 1 }
+{ "name": "Staff Only" }
 ```
 
 **`201 Created`**
@@ -211,41 +238,59 @@ Creates a new category.
 { "id": 2, "name": "Staff Only", "position": 1, "created_at": "..." }
 ```
 
-**`400`** Validation failed · **`401`** Unauthorized · **`403`** Not admin · **`500`** Server error
+**`400`** Validation failed Â· **`401`** Unauthorized Â· **`403`** Not admin Â· **`500`** Server error
 
 ---
 
-### `PATCH /api/categories/:id` 🔒 *(moderator or admin)*
+### `PATCH /api/categories/:id` ðŸ”’ *(moderator or admin)*
 
-Renames or repositions a category. Only the fields you include are changed.
+Renames a category. Only the fields you include are changed. For reordering, prefer `PUT /api/categories/reorder`.
 
-**Request body** — all fields optional
+**Request body** â€” all fields optional
 
 | Field | Type | Rules |
 |-------|------|-------|
-| `name` | string | 1–64 chars. |
-| `position` | number | Integer. |
+| `name` | string | 1â€“64 chars. |
+| `position` | number | Integer. (Single move; prefer `/reorder` for drag-and-drop.) |
 
 ```json
-{ "position": 2 }
+{ "name": "Voice Channels" }
 ```
 
 **`200 OK`** Returns updated category object.
 
-**`400`** Validation failed · **`401`** Unauthorized · **`403`** Insufficient permissions · **`404`** Category not found · **`500`** Server error
+**`400`** Validation failed Â· **`401`** Unauthorized Â· **`403`** Insufficient permissions Â· **`404`** Category not found Â· **`500`** Server error
 
 ---
 
-### `DELETE /api/categories/:id` 🔒 *(admin only)*
+### `PUT /api/categories/reorder` ðŸ”’ *(admin only)*
 
-Deletes a category. Channels inside it become uncategorized (`category_id` → `null`) — they are **not** deleted.
+Atomically repositions all categories in a single transaction. Send the full desired order after a drag-and-drop; all positions are updated together so the client never sees a partial state.
+
+**Request body** â€” array of `{ id, position }`
+
+```json
+[
+  { "id": 2, "position": 0 },
+  { "id": 1, "position": 1 }
+]
+```
+
+**`200 OK`** Returns the full updated category list ordered by the new positions.
+
+**`400`** Validation failed Â· **`401`** Unauthorized Â· **`403`** Not admin Â· **`500`** Server error
+
+---
+
+### `DELETE /api/categories/:id` ðŸ”’ *(admin only)*
+
+Deletes a category. Channels inside it become uncategorized (`category_id` â†’ `null`) â€” they are **not** deleted.
 
 **`204 No Content`**
 
-**`401`** Unauthorized · **`403`** Not admin · **`404`** Category not found · **`500`** Server error
+**`401`** Unauthorized Â· **`403`** Not admin Â· **`404`** Category not found Â· **`500`** Server error
 
 ---
-
 ## Channels — `/api/channels` 🔒
 
 ### `GET /api/channels`
@@ -264,25 +309,15 @@ Returns all channels with their category info, ordered by category position then
     "category_position": 0,
     "position": 0,
     "created_at": "..."
-  },
-  {
-    "id": 2,
-    "name": "announcements",
-    "description": null,
-    "category_id": 1,
-    "category_name": "Text Channels",
-    "category_position": 0,
-    "position": 1,
-    "created_at": "..."
   }
 ]
 ```
 
 ---
 
-### `POST /api/channels` 🔒 *(moderator or admin)*
+### `POST /api/channels` 🔒 *(admin only)*
 
-Creates a new channel.
+Creates a new channel. Position is auto-assigned to the end of `category_id`'s channel list unless explicitly provided.
 
 **Request body**
 
@@ -291,10 +326,10 @@ Creates a new channel.
 | `name` | string | Required. 1–64 chars. |
 | `description` | string | Optional. |
 | `category_id` | number | Optional. ID of an existing category. |
-| `position` | number | Optional integer. Default `0`. |
+| `position` | number | Optional integer. Defaults to end of category. |
 
 ```json
-{ "name": "random", "description": "Off-topic chat", "category_id": 1, "position": 2 }
+{ "name": "random", "description": "Off-topic chat", "category_id": 1 }
 ```
 
 **`201 Created`**
@@ -308,7 +343,7 @@ Creates a new channel.
 
 ### `PATCH /api/channels/:id` 🔒 *(moderator or admin)*
 
-Updates a channel's name, description, category, or position. Only the fields you include are changed. Use this to move a channel between categories or reorder it within one.
+Updates a channel's name or description. Only the fields you include are changed. For moving a channel between categories or reordering, prefer `PUT /api/channels/reorder`.
 
 **Request body** — all fields optional
 
@@ -316,16 +351,42 @@ Updates a channel's name, description, category, or position. Only the fields yo
 |-------|------|-------|
 | `name` | string | 1–64 chars. |
 | `description` | string \| null | Pass `null` to clear. |
-| `category_id` | number \| null | Pass `null` to uncategorize. |
-| `position` | number | Integer. |
+| `category_id` | number \| null | Pass `null` to uncategorize. (Single move; prefer `/reorder` for drag-and-drop.) |
+| `position` | number | Integer. (Single move; prefer `/reorder` for drag-and-drop.) |
 
 ```json
-{ "category_id": 2, "position": 0 }
+{ "name": "general-chat" }
 ```
 
 **`200 OK`** Returns updated channel object.
 
 **`400`** Validation failed · **`401`** Unauthorized · **`403`** Insufficient permissions · **`404`** Channel not found · **`409`** Name taken · **`500`** Server error
+
+---
+
+### `PUT /api/channels/reorder` 🔒 *(admin only)*
+
+Atomically repositions channels and/or moves them between categories in a single transaction. Send the full desired layout after a drag-and-drop.
+
+**Request body** — array of `{ id, category_id, position }`
+
+| Field | Type | Rules |
+|-------|------|-------|
+| `id` | number | Channel ID. |
+| `category_id` | number \| null | Target category. `null` = uncategorized. |
+| `position` | number | Integer position within the target category. |
+
+```json
+[
+  { "id": 1, "category_id": 1, "position": 0 },
+  { "id": 3, "category_id": 1, "position": 1 },
+  { "id": 2, "category_id": 2, "position": 0 }
+]
+```
+
+**`200 OK`** Returns the full updated channel list (same shape as `GET /api/channels`).
+
+**`400`** Validation failed · **`401`** Unauthorized · **`403`** Not admin · **`500`** Server error
 
 ---
 
@@ -359,7 +420,7 @@ Fetches message history for a channel. Returns messages in **chronological order
     "id": 12,
     "content": "Hello world!",
     "created_at": "2026-03-07T11:00:00.000Z",
-    "user_id": 1,
+    "user_id": "a3f8c21d-7e44-4b1c-9f02-3d5e6a8b1c0f",
     "username": "petersmith"
   }
 ]
@@ -510,7 +571,7 @@ All server settings are stored in the database and managed from the client. The 
 | `DB_USER` | `concordia` | Database user |
 | `DB_PASSWORD` | — | **Required.** Database password |
 | `FEDERATION_URL` | `https://federation.concordiachat.com` | Override for local Federation instances |
-| `ADMIN_USER_ID` | `0` | Bootstrap admin on first deploy (seeds DB if `admin_user_id` is `0`). Also acts as a permanent emergency override when set. |
+| `ADMIN_USER_ID` | `` | Bootstrap admin on first deploy (seeds DB if `admin_user_id` is unset). Must be a valid Federation user UUID. Also acts as a permanent emergency override when set. |
 | `CLIENT_ORIGIN` | `*` | CORS allowed origin |
 
 Server name, description, and admin are stored in the `server_settings` database table and managed via `PATCH /api/server/settings`. The only **required** env var for a fresh deployment is `DB_PASSWORD`.
