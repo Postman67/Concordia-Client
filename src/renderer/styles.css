@@ -660,6 +660,70 @@ body.light .server-list-divider { background: rgba(0,0,0,0.1); }
 
 .send-btn { flex-shrink: 0; }
 
+/* ─── Server context menu ───────────────────────── */
+.context-menu {
+  position: fixed;
+  z-index: 200;
+  background: var(--surface0);
+  border: 1px solid var(--surface1);
+  border-radius: var(--radius);
+  padding: 0.3rem;
+  min-width: 160px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.context-menu.hidden { display: none; }
+
+.context-menu-item {
+  background: none;
+  border: none;
+  color: var(--text);
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-radius: calc(var(--radius) - 2px);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-family: inherit;
+  font-weight: 500;
+  width: 100%;
+  transition: background 0.1s;
+}
+.context-menu-item:hover { background: var(--surface1); }
+.context-menu-item--danger { color: var(--red); }
+.context-menu-item--danger:hover { background: var(--red); color: #fff; }
+
+.context-menu-divider {
+  height: 1px;
+  background: var(--surface1);
+  margin: 0.2rem 0;
+}
+
+/* ─── Server info modal body ─────────────────────── */
+.server-info-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.server-info-loading { color: var(--subtext0); font-size: 0.9rem; }
+.server-info-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.server-info-row label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--subtext0);
+}
+.server-info-row span {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
 /* ─── Modals (shared overlay) ───────────────────── */
 .modal-overlay {
   position: fixed;

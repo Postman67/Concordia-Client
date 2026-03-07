@@ -40,6 +40,13 @@ const regError         = document.getElementById('reg-error');
 
 // Server sidebar
 const serverListIcons  = document.getElementById('server-list-icons');
+const serverContextMenu    = document.getElementById('server-context-menu');
+const ctxServerInfo        = document.getElementById('ctx-server-info');
+const ctxServerLeave       = document.getElementById('ctx-server-leave');
+const serverInfoOverlay    = document.getElementById('server-info-overlay');
+const serverInfoName       = document.getElementById('server-info-name');
+const serverInfoBody       = document.getElementById('server-info-body');
+const btnCloseServerInfo   = document.getElementById('btn-close-server-info');
 
 // Channel sidebar
 const serverNameLabel  = document.getElementById('server-name-label');
@@ -265,6 +272,12 @@ function renderServerSidebar() {
     btn.style.background = srv.id === activeServerId ? '' : stringToColor(srv.server_name || srv.server_address);
     btn.addEventListener('click', () => selectServer(srv.id));
 
+    // Right-click context menu
+    wrap.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      openServerContextMenu(e.clientX, e.clientY, srv.id);
+    });
+
     wrap.appendChild(btn);
     serverListIcons.appendChild(wrap);
   });
@@ -285,6 +298,112 @@ function renderServerSidebar() {
   addWrap.appendChild(addBtn);
   serverListIcons.appendChild(addWrap);
 }
+
+// ═══════════════════════════════════════════════════════════════
+//  Server Context Menu
+// ═══════════════════════════════════════════════════════════════
+
+let contextMenuTargetId = null;
+
+function openServerContextMenu(x, y, fedServerId) {
+  contextMenuTargetId = fedServerId;
+  serverContextMenu.classList.remove('hidden');
+
+  // Keep menu inside viewport
+  const menuW = 170, menuH = 90;
+  const left = Math.min(x, window.innerWidth  - menuW - 8);
+  const top  = Math.min(y, window.innerHeight - menuH - 8);
+  serverContextMenu.style.left = `${left}px`;
+  serverContextMenu.style.top  = `${top}px`;
+}
+
+function closeServerContextMenu() {
+  serverContextMenu.classList.add('hidden');
+  contextMenuTargetId = null;
+}
+
+// Close on any click outside
+document.addEventListener('click', (e) => {
+  if (!serverContextMenu.contains(e.target)) closeServerContextMenu();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeServerContextMenu();
+});
+
+// Info
+ctxServerInfo.addEventListener('click', async () => {
+  const fedServerId = contextMenuTargetId;
+  closeServerContextMenu();
+  const srv = userServers.find(s => s.id === fedServerId);
+  if (!srv) return;
+
+  serverInfoName.textContent = srv.server_name || srv.server_address;
+  serverInfoBody.innerHTML = '<p class="server-info-loading">Loading&hellip;</p>';
+  serverInfoOverlay.classList.remove('hidden');
+
+  try {
+    const url = buildServerUrl(srv.server_address);
+    const res = await fetch(`${url}/api/server/info`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const info = await res.json();
+    serverInfoBody.innerHTML = '';
+    const rows = [
+      { label: 'Name',        value: info.name        ?? '—' },
+      { label: 'Description', value: info.description ?? '—' },
+      { label: 'Members',     value: info.member_count ?? '—' },
+      { label: 'Address',     value: srv.server_address },
+    ];
+    rows.forEach(({ label, value }) => {
+      const row = document.createElement('div');
+      row.className = 'server-info-row';
+      row.innerHTML = `<label>${label}</label><span>${escapeHtml(String(value))}</span>`;
+      serverInfoBody.appendChild(row);
+    });
+  } catch (err) {
+    serverInfoBody.innerHTML = `<p class="server-info-loading">Failed to load: ${escapeHtml(err.message)}</p>`;
+  }
+});
+
+btnCloseServerInfo.addEventListener('click', () => serverInfoOverlay.classList.add('hidden'));
+serverInfoOverlay.addEventListener('click', (e) => {
+  if (e.target === serverInfoOverlay) serverInfoOverlay.classList.add('hidden');
+});
+
+// Leave
+ctxServerLeave.addEventListener('click', async () => {
+  const fedServerId = contextMenuTargetId;
+  closeServerContextMenu();
+  const srv = userServers.find(s => s.id === fedServerId);
+  if (!srv) return;
+  if (!confirm(`Leave "${srv.server_name || srv.server_address}"? You can re-add it later.`)) return;
+  try {
+    await fedDelete(`/api/servers/${fedServerId}`);
+    userServers = userServers.filter(s => s.id !== fedServerId);
+    // If we were viewing this server, reset to the next available one
+    if (activeServerId === fedServerId) {
+      if (socket) { socket.disconnect(); socket = null; }
+      activeServerId  = null;
+      activeServerUrl = null;
+      activeChannelId = null;
+      channels        = [];
+      messages        = {};
+      typingUsers     = {};
+      currentUserRole = 'member';
+      serverNameLabel.textContent = 'Channels';
+      channelList.innerHTML       = '';
+      messagesContainer.innerHTML = '';
+      channelView.classList.add('hidden');
+      noChannelPlaceholder.classList.remove('hidden');
+      btnNewChannel.style.display    = 'none';
+      btnDeleteChannel.style.display = 'none';
+      localStorage.removeItem('last_server_id');
+      localStorage.removeItem('last_channel_id');
+    }
+    renderServerSidebar();
+  } catch (err) {
+    alert(`Could not leave server: ${err.message}`);
+  }
+});
 
 function openAddServerModal() {
   document.getElementById('add-server-address').value = '';
@@ -348,8 +467,8 @@ async function selectServer(fedServerId, restoreChannelId = null) {
 }
 
 function buildServerUrl(address) {
-  if (/^https?:\/\//.test(address)) return address;
-  return `http://${address}`;
+  if (/^https?:\/\//.test(address)) return address; // explicit scheme wins
+  return `https://${address}`;
 }
 
 // ─── Add server ────────────────────────────────────────────────

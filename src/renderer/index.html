@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https: data: blob:; connect-src http://localhost:3000 ws://localhost:3000 https://federation.concordiachat.com wss://federation.concordiachat.com http://* ws://*;" />
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' https: data: blob:; connect-src https://federation.concordiachat.com wss://federation.concordiachat.com http://* ws://* http://*:* ws://*:* https://* wss://* https://*:* wss://*:*;" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Concordia</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -180,6 +180,26 @@
   </div>
 
   <!-- Add-server modal -->
+  <!-- Server context menu -->
+  <div id="server-context-menu" class="context-menu hidden">
+    <button id="ctx-server-info" class="context-menu-item">&#9432; &nbsp;Info</button>
+    <div class="context-menu-divider"></div>
+    <button id="ctx-server-leave" class="context-menu-item context-menu-item--danger">&#10005; &nbsp;Leave Server</button>
+  </div>
+
+  <!-- Server info modal -->
+  <div id="server-info-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="server-info-name">Server Info</h2>
+        <button id="btn-close-server-info" class="icon-btn">&times;</button>
+      </div>
+      <div id="server-info-body" class="server-info-body">
+        <p class="server-info-loading">Loading&hellip;</p>
+      </div>
+    </div>
+  </div>
+
   <div id="add-server-overlay" class="modal-overlay hidden">
     <div class="modal">
       <div class="modal-header">
