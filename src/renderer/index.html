@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Concordia</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════ AUTH SCREEN ═══════════════════════ -->
+  <div id="auth-screen" class="screen">
+    <div class="auth-card">
+      <h1 class="logo">Concordia</h1>
+      <p class="tagline">Real-time chat</p>
+
+      <div class="tab-row">
+        <button class="tab active" data-tab="login">Login</button>
+        <button class="tab" data-tab="register">Register</button>
+      </div>
+
+      <!-- Login form -->
+      <form id="login-form" class="auth-form">
+        <input id="login-username" type="text" placeholder="Username" autocomplete="username" required />
+        <input id="login-password" type="password" placeholder="Password" autocomplete="current-password" required />
+        <button type="submit" class="btn-primary">Sign in</button>
+        <p class="error-msg" id="login-error"></p>
+      </form>
+
+      <!-- Register form -->
+      <form id="register-form" class="auth-form hidden">
+        <input id="reg-username" type="text" placeholder="Username" autocomplete="username" required />
+        <input id="reg-password" type="password" placeholder="Password" autocomplete="new-password" required />
+        <button type="submit" class="btn-primary">Create account</button>
+        <p class="error-msg" id="reg-error"></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════ CHAT SCREEN ════════════════════════ -->
+  <div id="chat-screen" class="screen hidden">
+
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title">Channels</span>
+        <button id="btn-new-channel" class="icon-btn" title="New channel">+</button>
+      </div>
+
+      <ul id="channel-list"></ul>
+
+      <div class="sidebar-footer">
+        <span id="current-user-label"></span>
+        <button id="btn-logout" class="icon-btn" title="Log out">⏻</button>
+      </div>
+    </aside>
+
+    <!-- Main pane -->
+    <main id="chat-pane">
+      <!-- Placeholder shown when no channel selected -->
+      <div id="no-channel-placeholder">
+        <p>Select a channel to start chatting</p>
+      </div>
+
+      <!-- Active channel view -->
+      <div id="channel-view" class="hidden">
+        <header id="channel-header">
+          <span id="channel-name-label"></span>
+          <button id="btn-delete-channel" class="danger-btn" title="Delete channel">Delete</button>
+        </header>
+
+        <div id="message-list">
+          <button id="btn-load-more" class="load-more-btn">Load older messages</button>
+          <div id="messages-container"></div>
+        </div>
+
+        <div id="typing-bar"></div>
+
+        <form id="message-form">
+          <input id="message-input" type="text" placeholder="Message…" autocomplete="off" />
+          <button type="submit" class="btn-primary send-btn">Send</button>
+        </form>
+      </div>
+    </main>
+  </div>
+
+  <!-- New-channel modal -->
+  <div id="modal-overlay" class="hidden">
+    <div class="modal">
+      <h2>New Channel</h2>
+      <form id="new-channel-form">
+        <input id="new-channel-name" type="text" placeholder="Channel name" required />
+        <input id="new-channel-desc" type="text" placeholder="Description (optional)" />
+        <div class="modal-actions">
+          <button type="button" id="btn-cancel-modal" class="btn-secondary">Cancel</button>
+          <button type="submit" class="btn-primary">Create</button>
+        </div>
+        <p class="error-msg" id="channel-error"></p>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
