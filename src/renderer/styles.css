@@ -306,7 +306,6 @@ input:focus { border-color: var(--blue); }
   gap: 0.6rem;
   padding: 0.2rem 0;
 }
-.message:hover { background: rgba(255,255,255,0.02); border-radius: 4px; }
 
 .avatar {
   width: 32px;
@@ -348,6 +347,16 @@ input:focus { border-color: var(--blue); }
   color: var(--text);
   line-height: 1.5;
   word-break: break-word;
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin: 0 -4px;
+  transition: background 0.1s;
+}
+.message-content:hover {
+  background: rgba(255,255,255,0.04);
+}
+.message-body > .message-content + .message-content {
+  margin-top: 3px;
 }
 
 /* Typing bar */

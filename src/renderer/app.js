@@ -17,6 +17,9 @@ let activeChannelId = null;
 let messages = {};        // channelId → [msg, ...]
 let typingUsers = {};     // channelId → Set<username>
 let typingTimer = null;
+let lastMsgMeta = null;   // { userId, timestamp } — for grouping consecutive messages
+
+const GROUP_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
 
 // ─── DOM refs ─────────────────────────────────────────────────────────────────
 const authScreen       = document.getElementById('auth-screen');
@@ -294,13 +297,38 @@ btnLoadMore.addEventListener('click', () => {
 
 function renderMessages(channelId) {
   messagesContainer.innerHTML = '';
+  lastMsgMeta = null;
   const msgs = messages[channelId] ?? [];
   msgs.forEach((msg) => appendMessage(msg, false));
 }
 
 function appendMessage(msg, doScroll = true) {
   const username = msg.user?.username ?? msg.username ?? 'Unknown';
+  const userId = msg.user?.id ?? msg.user_id ?? username;
   const createdAt = msg.createdAt ?? msg.created_at;
+  const timestamp = createdAt ? new Date(createdAt).getTime() : Date.now();
+
+  const isContinuation =
+    lastMsgMeta &&
+    lastMsgMeta.userId === userId &&
+    (timestamp - lastMsgMeta.timestamp) < GROUP_TIMEOUT_MS;
+
+  lastMsgMeta = { userId, timestamp };
+
+  if (isContinuation) {
+    // Append just the content line to the existing message block
+    const lastBody = messagesContainer.lastElementChild?.querySelector('.message-body');
+    if (lastBody) {
+      const contentEl = document.createElement('div');
+      contentEl.className = 'message-content';
+      contentEl.textContent = msg.content;
+      lastBody.appendChild(contentEl);
+      if (doScroll) scrollToBottom();
+      return;
+    }
+  }
+
+  // Full message block (new author or timed out)
   const time = createdAt ? new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
   const initials = username.slice(0, 2);
   const avatarColor = stringToColor(username);
