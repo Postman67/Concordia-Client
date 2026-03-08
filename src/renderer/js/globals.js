@@ -34,6 +34,9 @@ let chContextTarget  = null;     // { id, name, categoryId } â€“ channel ri
 let catContextTarget = null;     // { id, name }           â€“ category right-click
 let membersPaneVisible = true;
 let pendingCategoryId  = null;   // pre-selected category for new channel modal
+let currentUserStatus  = 'online';
+let memberStatusCache  = {};     // userId → status string
+let heartbeatInterval  = null;
 
 const GROUP_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -145,4 +148,9 @@ const ssBtnSaveOverview     = document.getElementById('ss-btn-save-overview');
 const ssOverviewStatus      = document.getElementById('ss-overview-status');
 const ssMembersList         = document.getElementById('ss-members-list');
 const ssMembersStatus       = document.getElementById('ss-members-status');
+
+// Status
+const statusContextMenu      = document.getElementById('status-context-menu');
+const currentUserStatusBadge = document.getElementById('current-user-status-badge');
+const sidebarUser            = document.getElementById('sidebar-user');
 

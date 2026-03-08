@@ -1,6 +1,6 @@
 # Concordia Federation — API Reference
 
-> Last updated: March 7, 2026 2:48 PM PST
+> Last updated: March 7, 2026 5:43 PM PST
 
 > The Federation is the sole authentication and settings authority for all Concordia clients.
 > Individual servers never receive personal user data — only the user's `id`.
@@ -103,9 +103,76 @@ Returns the authenticated user's profile joined with their current settings.
     "created_at": "...",
     "display_name": "Peter",
     "avatar_url": "https://example.com/avatar.png",
-    "theme": "dark"
+    "theme": "dark",
+    "status": "online",
+    "last_seen": "..."
   }
 }
+```
+
+**`401`** Missing/invalid token · **`404`** User not found · **`500`** Server error
+
+---
+
+## Status — `/api/user` 🔒
+
+Users have five possible statuses:
+
+| Value | Meaning |
+|-------|---------|
+| `online` | Actively connected to the Federation. |
+| `idle` | Logged in but no recent client activity (set by the client after inactivity). |
+| `dnd` | Do Not Disturb — manually set. |
+| `invisible` | Logged in but appears `offline` to all other users. |
+| `offline` | Not logged in, or manually set. |
+
+### `PUT /api/user/status`
+
+Explicitly sets the authenticated user’s status.
+
+**Request body**
+
+| Field | Type | Values |
+|-------|------|--------|
+| `status` | string | `online` \| `idle` \| `dnd` \| `invisible` \| `offline` |
+
+```json
+{ "status": "dnd" }
+```
+
+**`200 OK`**
+```json
+{ "status": "dnd" }
+```
+
+**`400`** Invalid status value · **`401`** Missing/invalid token · **`500`** Server error
+
+---
+
+### `POST /api/user/heartbeat`
+
+Updates `last_seen` to now. If the user’s current status is `offline`, it is automatically switched to `online`.
+
+Clients should call this on a regular interval (e.g. every 30–60 seconds) while the user is active, and call `PUT /api/user/status` with `idle` after a period of inactivity.
+
+**`200 OK`**
+```json
+{ "ok": true }
+```
+
+**`401`** Missing/invalid token · **`500`** Server error
+
+---
+
+### `GET /api/user/status/:id`
+
+Returns the visible status of any user by their UUID.
+
+> `invisible` users are returned as `offline` — the caller cannot tell the difference.
+
+**`200 OK`**
+```json
+{ "status": "online", "last_seen": "..." }
 ```
 
 **`401`** Missing/invalid token · **`404`** User not found · **`500`** Server error
@@ -230,6 +297,117 @@ Removes a server from the user's list.
 
 ---
 
+## Admin — `/api/admin` 🔒🛡
+
+All admin endpoints require a JWT whose `sub` claim matches the `ADMIN_UUID` environment variable.
+Obtain a token by logging in as the admin account via `POST /api/auth/login`.
+
+Admin requests return `403 Forbidden` if the token is valid but does not belong to the admin UUID.
+
+---
+
+### `GET /api/admin/stats`
+
+Returns federation-wide aggregate counts.
+
+**`200 OK`**
+```json
+{
+  "stats": {
+    "total_users": "42",
+    "total_server_entries": "137",
+    "unique_servers": "25"
+  }
+}
+```
+
+---
+
+### `GET /api/admin/users`
+
+Returns all users with their settings and server count.
+
+**`200 OK`**
+```json
+{
+  "users": [
+    {
+      "id": "a3f8c21d-...",
+      "username": "petersmith",
+      "email": "peter@example.com",
+      "display_name": "Peter",
+      "avatar_url": "https://example.com/avatar.png",
+      "theme": "dark",
+      "server_count": "3",
+      "created_at": "..."
+    }
+  ]
+}
+```
+
+---
+
+### `GET /api/admin/users/:id`
+
+Returns full detail for a single user including their server list.
+
+**`200 OK`**
+```json
+{
+  "user": { "id": "...", "username": "petersmith", "email": "...", "display_name": "Peter", "avatar_url": "...", "theme": "dark", "created_at": "...", "updated_at": "..." },
+  "servers": [ { "id": "...", "server_address": "...", "server_name": "...", "position": 0, "added_at": "..." } ]
+}
+```
+
+**`404`** User not found
+
+---
+
+### `PATCH /api/admin/users/:id`
+
+Modifies a user's account fields or settings. Only sent fields are updated.
+
+**Request body** — all fields optional
+
+| Field | Type | Rules |
+|-------|------|-------|
+| `username` | string | 3–50 chars. |
+| `email` | string | Valid email. |
+| `display_name` | string | Max 100 chars. |
+| `avatar_url` | string | Valid URL. |
+| `theme` | string | `"dark"` or `"light"`. |
+
+**`200 OK`** Returns updated user object.
+
+**`400`** Validation failed · **`404`** User not found · **`409`** Username/email conflict · **`500`** Server error
+
+> Password resets are not exposed via the admin API. Use a direct DB update for emergency resets.
+
+---
+
+### `DELETE /api/admin/users/:id`
+
+Permanently deletes a user and all associated settings and servers (cascade).
+
+> The master admin UUID (`ADMIN_UUID`) cannot be deleted.
+
+**`204 No Content`** — deleted successfully.
+
+**`400`** Attempt to delete admin account · **`404`** User not found · **`500`** Server error
+
+---
+
+## Dashboard
+
+The admin dashboard is served as a static single-page app at `/dashboard`.
+
+- **URL:** `https://federation.concordiachat.com/dashboard`
+- Log in with the admin Concordia account credentials.
+- The dashboard communicates with the `/api/admin/*` endpoints using the JWT stored in `localStorage`.
+- Token expiry is enforced on every page load — expired sessions redirect to the login screen automatically.
+
+---
+
 ## Database Schema
 
 ```
@@ -246,6 +424,8 @@ user_settings                                     ← one row per user, globally
 ├── display_name   VARCHAR(100)
 ├── avatar_url     VARCHAR(500)
 ├── theme          VARCHAR(20)  DEFAULT 'dark'
+├── status         VARCHAR(20)  DEFAULT 'offline'  ← online | idle | dnd | invisible | offline
+├── last_seen      TIMESTAMPTZ                      ← updated by heartbeat / PUT /status
 └── updated_at     TIMESTAMPTZ  DEFAULT NOW()
 
 user_servers                                      ← server list, no user PII sent to servers

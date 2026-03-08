@@ -77,3 +77,6 @@
 .btn-danger:hover { opacity: 0.85; }
 .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.ctx-status-item { display: flex; align-items: center; gap: 0.45rem; }
+.ctx-status-item.active { font-weight: 700; background: var(--surface1); }
+

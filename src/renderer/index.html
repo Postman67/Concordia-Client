@@ -84,10 +84,13 @@
 
       <!-- User banner (full bottom of left panel) -->
       <div class="sidebar-footer">
-        <div class="sidebar-user">
-          <div class="sidebar-user-avatar" id="current-user-avatar">
-            <img alt="" style="display:none" />
-            <span></span>
+        <div class="sidebar-user" id="sidebar-user">
+          <div class="avatar-wrap">
+            <div class="sidebar-user-avatar" id="current-user-avatar">
+              <img alt="" style="display:none" />
+              <span></span>
+            </div>
+            <span class="status-badge" id="current-user-status-badge" data-status="offline"></span>
           </div>
           <span id="current-user-label"></span>
         </div>
@@ -225,6 +228,16 @@
   <div id="chlist-context-menu" class="context-menu hidden">
     <button id="ctx-chlist-create-channel" class="context-menu-item">&#43; &nbsp;Create Channel</button>
     <button id="ctx-chlist-create-category" class="context-menu-item" style="display:none">&#43; &nbsp;Create Category</button>
+  </div>
+
+  <!-- Status context menu -->
+  <div id="status-context-menu" class="context-menu hidden">
+    <button class="context-menu-item ctx-status-item" data-status="online"><span class="status-dot" data-status="online"></span>Online</button>
+    <button class="context-menu-item ctx-status-item" data-status="idle"><span class="status-dot" data-status="idle"></span>Idle</button>
+    <button class="context-menu-item ctx-status-item" data-status="dnd"><span class="status-dot" data-status="dnd"></span>Do Not Disturb</button>
+    <div class="context-menu-divider"></div>
+    <button class="context-menu-item ctx-status-item" data-status="invisible"><span class="status-dot" data-status="invisible"></span>Invisible</button>
+    <button class="context-menu-item ctx-status-item" data-status="offline"><span class="status-dot" data-status="offline"></span>Offline</button>
   </div>
 
   <!-- Create category modal -->

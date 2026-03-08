@@ -153,7 +153,11 @@
   gap: 0.5rem;
   overflow: hidden;
   flex: 1;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.1s;
 }
+.sidebar-user:hover { background: var(--surface1); }
 
 .sidebar-user-avatar {
   width: 32px;

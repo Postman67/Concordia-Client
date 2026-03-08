@@ -64,6 +64,13 @@ async function onAuthenticated(jwt, user) {
     localStorage.setItem('auth_user', JSON.stringify(meRes.user));
   }
 
+  // Seed status from federation profile, then mark online
+  currentUserStatus = meRes?.user?.status ?? 'online';
+  fedPut('/api/user/status', { status: 'online' }).catch(() => {});
+  currentUserStatus = 'online';
+  if (heartbeatInterval) clearInterval(heartbeatInterval);
+  heartbeatInterval = setInterval(() => fedPost('/api/user/heartbeat', {}).catch(() => {}), 30000);
+
   // Apply federation theme (overrides localStorage)
   const isLight = userSettings.theme === 'light';
   applyTheme(isLight);
@@ -114,6 +121,7 @@ function updateUserDisplay() {
     initials.style.display = '';
     currentUserAvatar.style.background = stringToColor(displayName);
   }
+  currentUserStatusBadge.dataset.status = currentUserStatus;
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -147,6 +155,10 @@ btnLogout.addEventListener('click', () => {
   ctxServerSettings.style.display = 'none';
   serverMembers = [];
   serverCategories = [];
+  clearInterval(heartbeatInterval);
+  heartbeatInterval = null;
+  currentUserStatus = 'online';
+  memberStatusCache = {};
   channelView.classList.add('hidden');
   noChannelPlaceholder.querySelector('p').textContent = 'Select a channel to start chatting';
   noChannelPlaceholder.querySelector('p').style.color = '';
@@ -155,6 +167,43 @@ btnLogout.addEventListener('click', () => {
   authScreen.classList.remove('hidden');
   loginForm.reset();
   registerForm.reset();
+});
+
+// ─── Status context menu ─────────────────────────────────────────────────────
+sidebarUser.addEventListener('click', () => {
+  if (!token) return;
+  if (!statusContextMenu.classList.contains('hidden')) {
+    statusContextMenu.classList.add('hidden');
+    return;
+  }
+  statusContextMenu.querySelectorAll('.ctx-status-item').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.status === currentUserStatus);
+  });
+  statusContextMenu.classList.remove('hidden');
+  const footerEl = sidebarUser.closest('.sidebar-footer');
+  const fRect    = footerEl.getBoundingClientRect();
+  const mH = statusContextMenu.offsetHeight || 180;
+  const mW = statusContextMenu.offsetWidth  || 190;
+  statusContextMenu.style.left = `${Math.min(fRect.left + 8, window.innerWidth  - mW - 8)}px`;
+  statusContextMenu.style.top  = `${Math.max(fRect.top  - mH - 4, 8)}px`;
+});
+
+statusContextMenu.querySelectorAll('.ctx-status-item').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const status = btn.dataset.status;
+    statusContextMenu.classList.add('hidden');
+    try {
+      await fedPut('/api/user/status', { status });
+      currentUserStatus = status;
+      updateUserDisplay();
+    } catch (_) {}
+  });
+});
+
+document.addEventListener('click', (e) => {
+  if (!sidebarUser.contains(e.target) && !statusContextMenu.contains(e.target)) {
+    statusContextMenu.classList.add('hidden');
+  }
 });
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•

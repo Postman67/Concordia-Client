@@ -334,6 +334,10 @@ function renderMembersPane() {
     groupMembers.forEach(m => {
       const row = document.createElement('div');
       row.className = 'members-pane-row';
+
+      const wrap = document.createElement('div');
+      wrap.className = 'avatar-wrap';
+
       const avatarEl = document.createElement('div');
       avatarEl.className = 'members-pane-avatar';
       const cached = avatarCache[String(m.user_id)];
@@ -346,14 +350,44 @@ function renderMembersPane() {
         avatarEl.textContent = m.username.slice(0, 2).toUpperCase();
         avatarEl.style.background = stringToColor(m.username);
       }
+
+      const badge = document.createElement('span');
+      badge.className = 'status-badge';
+      badge.dataset.memberId = String(m.user_id);
+      badge.dataset.status = memberStatusCache[String(m.user_id)] || 'offline';
+
+      wrap.appendChild(avatarEl);
+      wrap.appendChild(badge);
+
       const nameEl = document.createElement('span');
       nameEl.className = 'members-pane-name';
       nameEl.textContent = m.username;
-      row.appendChild(avatarEl);
+      row.appendChild(wrap);
       row.appendChild(nameEl);
       membersPaneList.appendChild(row);
     });
   });
+
+  // Background-fetch statuses for any uncached members, then patch badges in-place
+  const memberIds = serverMembers.map(m => String(m.user_id));
+  const uncached  = memberIds.filter(id => !(id in memberStatusCache));
+  if (uncached.length) {
+    Promise.allSettled(
+      uncached.map(id =>
+        fedGet(`/api/user/status/${id}`).then(r => ({ id, status: r.status }))
+      )
+    ).then(results => {
+      results.forEach(r => {
+        if (r.status === 'fulfilled') {
+          memberStatusCache[r.value.id] = r.value.status;
+        }
+      });
+      membersPaneList.querySelectorAll('.status-badge[data-member-id]').forEach(badge => {
+        const id = badge.dataset.memberId;
+        if (memberStatusCache[id]) badge.dataset.status = memberStatusCache[id];
+      });
+    });
+  }
 }
 
 btnToggleMembers.addEventListener('click', () => {
