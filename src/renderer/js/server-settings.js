@@ -26,11 +26,15 @@ let ssSelectedRoleId = null;
 const ssRolesList       = document.getElementById('ss-roles-list');
 const ssRoleEditor      = document.getElementById('ss-role-editor');
 const ssRoleCreateBtn   = document.getElementById('ss-role-create-btn');
-const ssChTreeView      = document.getElementById('ss-ch-tree-view');
-const ssChDetailView    = document.getElementById('ss-ch-detail-view');
 const ssChTree          = document.getElementById('ss-ch-tree');
-const ssChDetailContent = document.getElementById('ss-ch-detail-content');
-const ssChBackBtn       = document.getElementById('ss-ch-back-btn');
+
+// Channel / Category settings overlay
+const chsOverlay    = document.getElementById('ch-settings-overlay');
+const chsTargetName = document.getElementById('chs-target-name');
+const chsNavItems   = document.querySelectorAll('.ss-nav-item[data-chs-panel]');
+const chsPanelInfo  = document.getElementById('chs-panel-info');
+const chsPanelPerms = document.getElementById('chs-panel-perms');
+const chsCloseBtn   = document.getElementById('chs-close-btn');
 
 // ─── Tiny helpers ─────────────────────────────────────────────────
 function mkEl(tag, cls) {
@@ -435,13 +439,6 @@ async function loadSSChannels() {
 function renderSSChannelTree(cats, chs) {
   ssChTree.innerHTML = '';
 
-  const mkSettingsBtn = (label) => {
-    const btn = mkEl('button', 'ss-tree-settings-btn');
-    btn.title = label;
-    btn.textContent = '⚙';
-    return btn;
-  };
-
   // Uncategorised channels
   const uncategorised = chs.filter(c => !c.category_id);
   if (uncategorised.length) {
@@ -452,7 +449,7 @@ function renderSSChannelTree(cats, chs) {
     catHeader.appendChild(catName);
     catDiv.appendChild(catHeader);
     for (const ch of uncategorised) {
-      catDiv.appendChild(buildChannelRow(ch, mkSettingsBtn));
+      catDiv.appendChild(buildChannelRow(ch));
     }
     ssChTree.appendChild(catDiv);
   }
@@ -464,203 +461,155 @@ function renderSSChannelTree(cats, chs) {
     const catName = mkEl('span', 'ss-tree-cat-name');
     catName.textContent = cat.name;
     catHeader.appendChild(catName);
-    const catSettingsBtn = mkSettingsBtn(`Edit category: ${cat.name}`);
-    catSettingsBtn.addEventListener('click', () => openSSCategorySettings(cat));
-    catHeader.appendChild(catSettingsBtn);
     catDiv.appendChild(catHeader);
 
     const catChs = chs.filter(c => c.category_id === cat.id);
     for (const ch of catChs) {
-      catDiv.appendChild(buildChannelRow(ch, mkSettingsBtn));
+      catDiv.appendChild(buildChannelRow(ch));
     }
     ssChTree.appendChild(catDiv);
   }
 }
 
-function buildChannelRow(ch, mkSettingsBtn) {
+function buildChannelRow(ch) {
   const row = mkEl('div', 'ss-tree-channel');
   const nameSpan = mkEl('span');
   nameSpan.textContent = `# ${ch.name}`;
   row.appendChild(nameSpan);
-  const btn = mkSettingsBtn(`Edit channel: ${ch.name}`);
-  btn.addEventListener('click', () => openSSChannelSettings(ch));
-  row.appendChild(btn);
   return row;
 }
 
-async function openSSChannelSettings(ch) {
-  if (!ssChDetailView || !ssChDetailContent) return;
+// ════════════════════════════════════════════════════════════════════
+//  CHANNEL / CATEGORY SETTINGS OVERLAY  (context-menu → Edit)
+// ════════════════════════════════════════════════════════════════════
 
-  ssChDetailContent.innerHTML = '<p class="ss-loading">Loading…</p>';
-  ssChTreeView.classList.add('hidden');
-  ssChDetailView.classList.remove('hidden');
+chsNavItems.forEach(btn => {
+  btn.addEventListener('click', () => {
+    chsNavItems.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const target = btn.dataset.chsPanel;
+    chsPanelInfo.classList.toggle('hidden', target !== 'info');
+    chsPanelPerms.classList.toggle('hidden', target !== 'perms');
+  });
+});
+
+chsCloseBtn?.addEventListener('click', () => chsOverlay.classList.add('hidden'));
+chsOverlay?.addEventListener('click', e => { if (e.target === chsOverlay) chsOverlay.classList.add('hidden'); });
+
+async function openChSettings(type, target) {
+  if (!chsOverlay) return;
+  chsNavItems.forEach(b => b.classList.toggle('active', b.dataset.chsPanel === 'info'));
+  chsPanelInfo.classList.remove('hidden');
+  chsPanelPerms.classList.add('hidden');
+  chsTargetName.textContent = target.name;
+  chsPanelInfo.innerHTML = '';
+  chsPanelPerms.innerHTML = '<p class="ss-loading">Loading…</p>';
+  chsOverlay.classList.remove('hidden');
+
+  if (type === 'channel') renderChsInfoChannel(target);
+  else renderChsInfoCategory(target);
 
   const [overridesRes, rolesRes] = await Promise.all([
-    apiGet(`/api/roles/overrides/channel/${ch.id}`),
+    apiGet(type === 'channel' ? `/api/roles/overrides/channel/${target.id}` : `/api/roles/overrides/category/${target.id}`),
     apiGet('/api/roles'),
   ]);
-
   if (overridesRes.error || rolesRes.error) {
-    ssChDetailContent.innerHTML = `<p class="ss-error">${escapeHtml(overridesRes.error || rolesRes.error)}</p>`;
+    chsPanelPerms.innerHTML = `<p class="ss-error">${escapeHtml(overridesRes.error || rolesRes.error)}</p>`;
     return;
   }
   ssLocalRoles = rolesRes;
-  renderSSChannelDetail(ch, overridesRes, rolesRes);
+  renderChsPermsPanel(chsPanelPerms, target.id, overridesRes, rolesRes, type);
 }
 
-function renderSSChannelDetail(ch, overrides, roles) {
-  ssChDetailContent.innerHTML = '';
+function renderChsInfoChannel(ch) {
+  chsPanelInfo.innerHTML = '';
+  const title = mkEl('h2', 'ss-panel-title'); title.textContent = 'Name and Description';
+  chsPanelInfo.appendChild(title);
 
-  // ─ Edit name/desc ─
-  const editSection = mkEl('div', 'ss-detail-section');
-  const editTitle = mkEl('p', 'ss-section-heading');
-  editTitle.textContent = 'CHANNEL SETTINGS';
-  editSection.appendChild(editTitle);
+  const section = mkEl('div', 'ss-detail-section');
 
   const nameRow = mkEl('div', 'ss-field-row');
   const nameLbl = mkEl('label'); nameLbl.textContent = 'Name';
   const nameInput = mkEl('input'); nameInput.type = 'text'; nameInput.value = ch.name; nameInput.maxLength = 64;
   nameRow.appendChild(nameLbl); nameRow.appendChild(nameInput);
-  editSection.appendChild(nameRow);
+  section.appendChild(nameRow);
 
   const descRow = mkEl('div', 'ss-field-row');
   const descLbl = mkEl('label'); descLbl.textContent = 'Description';
   const descInput = mkEl('input'); descInput.type = 'text'; descInput.value = ch.description || ''; descInput.maxLength = 200;
   descRow.appendChild(descLbl); descRow.appendChild(descInput);
-  editSection.appendChild(descRow);
+  section.appendChild(descRow);
 
-  const editSaveBar = mkEl('div', 'ss-save-bar');
-  const editStatus = mkEl('p', 'ss-save-status');
-  const editSaveBtn = mkEl('button', 'btn-primary btn-sm');
-  editSaveBtn.textContent = 'Save';
-  editSaveBtn.addEventListener('click', async () => {
-    editSaveBtn.disabled = true;
+  const saveBar = mkEl('div', 'ss-save-bar');
+  const status = mkEl('p', 'ss-save-status');
+  const saveBtn = mkEl('button', 'btn-primary btn-sm'); saveBtn.textContent = 'Save';
+  saveBtn.addEventListener('click', async () => {
+    saveBtn.disabled = true;
     const r = await apiPatch(`/api/channels/${ch.id}`, { name: nameInput.value.trim(), description: descInput.value.trim() });
-    editSaveBtn.disabled = false;
-    if (r && r.error) { setSaveStatus(editStatus, r.error, true); return; }
+    saveBtn.disabled = false;
+    if (r && r.error) { setSaveStatus(status, r.error, true); return; }
     ch.name = nameInput.value.trim();
-    setSaveStatus(editStatus, 'Saved!', false);
-  });
-  editSaveBar.appendChild(editStatus);
-  editSaveBar.appendChild(editSaveBtn);
-  editSection.appendChild(editSaveBar);
-  ssChDetailContent.appendChild(editSection);
-
-  // ─ Permission overrides ─
-  const overrideSection = mkEl('div', 'ss-detail-section');
-  const overrideTitle = mkEl('p', 'ss-section-heading');
-  overrideTitle.textContent = 'PERMISSION OVERRIDES';
-  overrideSection.appendChild(overrideTitle);
-
-  // Build override map: roleId → { allow_bits, deny_bits }
-  const overrideMap = {};
-  for (const ov of (Array.isArray(overrides) ? overrides : [])) {
-    overrideMap[ov.role_id] = ov;
-  }
-
-  const splitDiv = mkEl('div', 'ss-override-split');
-  const roleList = mkEl('div', 'ss-override-role-list');
-  const editorDiv = mkEl('div', 'ss-override-editor');
-  editorDiv.innerHTML = '<p class="ss-placeholder" style="margin-top:1rem">Select a role to edit its overrides.</p>';
-
-  for (const role of roles) {
-    const hasOverride = !!overrideMap[role.id];
-    const btn = mkEl('button', 'ss-list-item' + (hasOverride ? ' ss-list-item--has-override' : ''));
-    const dot = mkEl('span', 'ss-role-dot');
-    dot.style.background = role.color || 'var(--subtext0)';
-    btn.appendChild(dot);
-    const span = mkEl('span'); span.textContent = role.name; btn.appendChild(span);
-    if (hasOverride) {
-      const badge = mkEl('span', 'ss-override-badge'); badge.textContent = 'set';
-      btn.appendChild(badge);
+    chsTargetName.textContent = ch.name;
+    const idx = channels.findIndex(c => c.id === ch.id);
+    if (idx !== -1) channels[idx] = { ...channels[idx], name: ch.name, description: descInput.value.trim() };
+    if (typeof renderChannelList === 'function') renderChannelList();
+    if (activeChannelId === ch.id) {
+      channelNameLabel.textContent = ch.name;
+      messageInput.placeholder = `Message #${ch.name}`;
     }
-    btn.addEventListener('click', () => {
-      roleList.querySelectorAll('.ss-list-item').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      renderOverrideEditor(editorDiv, ch.id, role, overrideMap, 'channel', () => {
-        // Refresh badge
-        const ov = overrideMap[role.id];
-        const hasBadge = btn.querySelector('.ss-override-badge');
-        if (ov && (ov.allow_bits || ov.deny_bits)) {
-          if (!hasBadge) { const b = mkEl('span', 'ss-override-badge'); b.textContent = 'set'; btn.appendChild(b); }
-          btn.classList.add('ss-list-item--has-override');
-        } else {
-          if (hasBadge) hasBadge.remove();
-          btn.classList.remove('ss-list-item--has-override');
-        }
-      });
-    });
-    roleList.appendChild(btn);
-  }
-
-  splitDiv.appendChild(roleList);
-  splitDiv.appendChild(editorDiv);
-  overrideSection.appendChild(splitDiv);
-  ssChDetailContent.appendChild(overrideSection);
+    setSaveStatus(status, 'Saved!', false);
+  });
+  saveBar.appendChild(status); saveBar.appendChild(saveBtn);
+  section.appendChild(saveBar);
+  chsPanelInfo.appendChild(section);
 }
 
-async function openSSCategorySettings(cat) {
-  if (!ssChDetailView || !ssChDetailContent) return;
+function renderChsInfoCategory(cat) {
+  chsPanelInfo.innerHTML = '';
+  const title = mkEl('h2', 'ss-panel-title'); title.textContent = 'Name';
+  chsPanelInfo.appendChild(title);
 
-  ssChDetailContent.innerHTML = '<p class="ss-loading">Loading…</p>';
-  ssChTreeView.classList.add('hidden');
-  ssChDetailView.classList.remove('hidden');
-
-  const [overridesRes, rolesRes] = await Promise.all([
-    apiGet(`/api/roles/overrides/category/${cat.id}`),
-    apiGet('/api/roles'),
-  ]);
-
-  if (overridesRes.error || rolesRes.error) {
-    ssChDetailContent.innerHTML = `<p class="ss-error">${escapeHtml(overridesRes.error || rolesRes.error)}</p>`;
-    return;
-  }
-  ssLocalRoles = rolesRes;
-  renderSSCategoryDetail(cat, overridesRes, rolesRes);
-}
-
-function renderSSCategoryDetail(cat, overrides, roles) {
-  ssChDetailContent.innerHTML = '';
-
-  // ─ Edit name ─
-  const editSection = mkEl('div', 'ss-detail-section');
-  const editTitle = mkEl('p', 'ss-section-heading');
-  editTitle.textContent = 'CATEGORY SETTINGS';
-  editSection.appendChild(editTitle);
+  const section = mkEl('div', 'ss-detail-section');
 
   const nameRow = mkEl('div', 'ss-field-row');
   const nameLbl = mkEl('label'); nameLbl.textContent = 'Name';
   const nameInput = mkEl('input'); nameInput.type = 'text'; nameInput.value = cat.name; nameInput.maxLength = 64;
   nameRow.appendChild(nameLbl); nameRow.appendChild(nameInput);
-  editSection.appendChild(nameRow);
+  section.appendChild(nameRow);
 
-  const editSaveBar = mkEl('div', 'ss-save-bar');
-  const editStatus = mkEl('p', 'ss-save-status');
-  const editSaveBtn = mkEl('button', 'btn-primary btn-sm');
-  editSaveBtn.textContent = 'Save';
-  editSaveBtn.addEventListener('click', async () => {
-    editSaveBtn.disabled = true;
+  const saveBar = mkEl('div', 'ss-save-bar');
+  const status = mkEl('p', 'ss-save-status');
+  const saveBtn = mkEl('button', 'btn-primary btn-sm'); saveBtn.textContent = 'Save';
+  saveBtn.addEventListener('click', async () => {
+    saveBtn.disabled = true;
     const r = await apiPatch(`/api/categories/${cat.id}`, { name: nameInput.value.trim() });
-    editSaveBtn.disabled = false;
-    if (r && r.error) { setSaveStatus(editStatus, r.error, true); return; }
+    saveBtn.disabled = false;
+    if (r && r.error) { setSaveStatus(status, r.error, true); return; }
     cat.name = nameInput.value.trim();
-    setSaveStatus(editStatus, 'Saved!', false);
+    chsTargetName.textContent = cat.name;
+    if (typeof serverCategories !== 'undefined') {
+      const c = serverCategories.find(x => x.id === cat.id); if (c) c.name = cat.name;
+    }
+    channels = channels.map(c => c.category_id === cat.id ? { ...c, category_name: cat.name } : c);
+    if (typeof renderChannelList === 'function') renderChannelList();
+    setSaveStatus(status, 'Saved!', false);
   });
-  editSaveBar.appendChild(editStatus);
-  editSaveBar.appendChild(editSaveBtn);
-  editSection.appendChild(editSaveBar);
-  ssChDetailContent.appendChild(editSection);
+  saveBar.appendChild(status); saveBar.appendChild(saveBtn);
+  section.appendChild(saveBar);
+  chsPanelInfo.appendChild(section);
+}
 
-  // ─ Permission overrides ─
+function renderChsPermsPanel(container, targetId, overrides, roles, type) {
+  container.innerHTML = '';
+  const title = mkEl('h2', 'ss-panel-title'); title.textContent = 'Permissions';
+  container.appendChild(title);
+
   const overrideSection = mkEl('div', 'ss-detail-section');
-  const overrideTitle = mkEl('p', 'ss-section-heading');
-  overrideTitle.textContent = 'PERMISSION OVERRIDES';
+  const overrideTitle = mkEl('p', 'ss-section-heading'); overrideTitle.textContent = 'PERMISSION OVERRIDES';
   overrideSection.appendChild(overrideTitle);
 
   const overrideMap = {};
-  for (const ov of (Array.isArray(overrides) ? overrides : [])) {
-    overrideMap[ov.role_id] = ov;
-  }
+  for (const ov of (Array.isArray(overrides) ? overrides : [])) overrideMap[ov.role_id] = ov;
 
   const splitDiv = mkEl('div', 'ss-override-split');
   const roleList = mkEl('div', 'ss-override-role-list');
@@ -670,18 +619,14 @@ function renderSSCategoryDetail(cat, overrides, roles) {
   for (const role of roles) {
     const hasOverride = !!overrideMap[role.id];
     const btn = mkEl('button', 'ss-list-item' + (hasOverride ? ' ss-list-item--has-override' : ''));
-    const dot = mkEl('span', 'ss-role-dot');
-    dot.style.background = role.color || 'var(--subtext0)';
+    const dot = mkEl('span', 'ss-role-dot'); dot.style.background = role.color || 'var(--subtext0)';
     btn.appendChild(dot);
     const span = mkEl('span'); span.textContent = role.name; btn.appendChild(span);
-    if (hasOverride) {
-      const badge = mkEl('span', 'ss-override-badge'); badge.textContent = 'set';
-      btn.appendChild(badge);
-    }
+    if (hasOverride) { const badge = mkEl('span', 'ss-override-badge'); badge.textContent = 'set'; btn.appendChild(badge); }
     btn.addEventListener('click', () => {
       roleList.querySelectorAll('.ss-list-item').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      renderOverrideEditor(editorDiv, cat.id, role, overrideMap, 'category', () => {
+      renderOverrideEditor(editorDiv, targetId, role, overrideMap, type, () => {
         const ov = overrideMap[role.id];
         const hasBadge = btn.querySelector('.ss-override-badge');
         if (ov && (ov.allow_bits || ov.deny_bits)) {
@@ -699,7 +644,7 @@ function renderSSCategoryDetail(cat, overrides, roles) {
   splitDiv.appendChild(roleList);
   splitDiv.appendChild(editorDiv);
   overrideSection.appendChild(splitDiv);
-  ssChDetailContent.appendChild(overrideSection);
+  container.appendChild(overrideSection);
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -816,13 +761,6 @@ function renderOverrideEditor(container, targetId, role, overrideMap, type, onSa
   saveBar.appendChild(saveBtn);
   container.appendChild(saveBar);
 }
-
-// ─── Back button ──────────────────────────────────────────────────
-ssChBackBtn?.addEventListener('click', () => {
-  ssChDetailView.classList.add('hidden');
-  ssChTreeView.classList.remove('hidden');
-  loadSSChannels();
-});
 
 // ════════════════════════════════════════════════════════════════════
 //  CDN & MEDIA PANEL

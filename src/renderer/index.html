@@ -315,41 +315,20 @@
     </div>
   </div>
 
-  <!-- Edit Channel modal -->
-  <div id="edit-channel-overlay" class="modal-overlay hidden">
-    <div class="modal">
-      <div class="modal-header">
-        <h2>Edit Channel</h2>
+  <!-- Channel / Category settings overlay -->
+  <div id="ch-settings-overlay" class="modal-overlay hidden">
+    <div class="server-settings-modal">
+      <div class="server-settings-sidebar">
+        <p class="ss-server-name" id="chs-target-name"></p>
+        <button class="ss-nav-item active" data-chs-panel="info"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" width="14" height="14" style="vertical-align:-2px;margin-right:5px"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.61Zm.176 4.823L9.75 4.81l-6.286 6.287a.253.253 0 0 0-.064.108l-.558 1.953 1.953-.558a.253.253 0 0 0 .108-.064Zm1.238-3.763a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354Z"/></svg>Name and Description</button>
+        <button class="ss-nav-item" data-chs-panel="perms"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" width="14" height="14" style="vertical-align:-2px;margin-right:5px"><path d="M10.5 0a5.499 5.499 0 1 1-1.288 10.848l-.932.932v1.22H7v1.5H5.5V16h-4v-3.5l4.21-4.21A5.499 5.499 0 0 1 10.5 0Zm-3.5 5.5a3.5 3.5 0 1 0 7 0 3.5 3.5 0 0 0-7 0Zm4 1a1 1 0 1 1 0-2 1 1 0 0 1 0 2Z"/></svg>Permissions</button>
+        <div class="ss-nav-divider"></div>
+        <button id="chs-close-btn" class="ss-nav-item ss-nav-item--danger"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" width="14" height="14" style="vertical-align:-2px;margin-right:5px"><path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.749.749 0 0 1 1.275.326.749.749 0 0 1-.215.734L9.06 8l3.22 3.22a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L8 9.06l-3.22 3.22a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z"/></svg>Close</button>
       </div>
-      <form id="edit-channel-form">
-        <label class="modal-label" for="edit-channel-name">Name</label>
-        <input id="edit-channel-name" type="text" maxlength="64" required />
-        <label class="modal-label" for="edit-channel-desc">Description</label>
-        <input id="edit-channel-desc" type="text" maxlength="255" placeholder="Optional" />
-        <div class="modal-actions">
-          <button type="button" id="btn-cancel-edit-channel" class="btn-secondary">Cancel</button>
-          <button type="submit" class="btn-primary">Save</button>
-        </div>
-        <p class="error-msg" id="edit-channel-error"></p>
-      </form>
-    </div>
-  </div>
-
-  <!-- Edit Category modal -->
-  <div id="edit-cat-overlay" class="modal-overlay hidden">
-    <div class="modal">
-      <div class="modal-header">
-        <h2>Edit Category</h2>
+      <div class="server-settings-content">
+        <div id="chs-panel-info" class="ss-panel"></div>
+        <div id="chs-panel-perms" class="ss-panel hidden"></div>
       </div>
-      <form id="edit-cat-form">
-        <label class="modal-label" for="edit-cat-name">Name</label>
-        <input id="edit-cat-name" type="text" maxlength="64" required />
-        <div class="modal-actions">
-          <button type="button" id="btn-cancel-edit-cat" class="btn-secondary">Cancel</button>
-          <button type="submit" class="btn-primary">Save</button>
-        </div>
-        <p class="error-msg" id="edit-cat-error"></p>
-      </form>
     </div>
   </div>
 
@@ -466,14 +445,8 @@
 
         <!-- Channels & Categories panel -->
         <div id="ss-panel-channels" class="ss-panel hidden">
-          <div id="ss-ch-tree-view">
-            <h2 class="ss-panel-title">Channels &amp; Categories</h2>
-            <div id="ss-ch-tree"></div>
-          </div>
-          <div id="ss-ch-detail-view" class="hidden">
-            <button id="ss-ch-back-btn" class="btn-secondary ss-back-btn">&#8592; Back to List</button>
-            <div id="ss-ch-detail-content" style="margin-top:1rem"></div>
-          </div>
+          <h2 class="ss-panel-title">Channels &amp; Categories</h2>
+          <div id="ss-ch-tree"></div>
         </div>
 
         <!-- Media & CDN panel -->

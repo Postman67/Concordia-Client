@@ -731,22 +731,6 @@
 }
 .ss-tree-channel:hover { background: var(--surface0); color: var(--text); }
 
-.ss-tree-settings-btn {
-  border: none;
-  background: none;
-  cursor: pointer;
-  color: var(--subtext0);
-  font-size: 0.95rem;
-  padding: 0.15rem 0.35rem;
-  border-radius: calc(var(--radius) * 0.5);
-  opacity: 0;
-  transition: opacity 0.1s;
-  flex-shrink: 0;
-}
-.ss-tree-channel:hover .ss-tree-settings-btn,
-.ss-tree-cat-header:hover .ss-tree-settings-btn { opacity: 1; }
-.ss-tree-settings-btn:hover { background: var(--surface2); color: var(--text); opacity: 1; }
-
 /* Channel / Category detail panels */
 .ss-detail-section {
   margin-bottom: 1.5rem;
@@ -774,11 +758,6 @@
   flex: 1;
   padding: 1rem;
   overflow-y: auto;
-}
-
-.ss-back-btn {
-  margin-bottom: 0;
-  font-size: 0.85rem;
 }
 
 .ss-textarea {

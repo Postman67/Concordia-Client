@@ -171,18 +171,5 @@ const statusContextMenu      = document.getElementById('status-context-menu');
 const currentUserStatusBadge = document.getElementById('current-user-status-badge');
 const sidebarUser            = document.getElementById('sidebar-user');
 
-// Edit Channel modal
-const editChannelOverlay    = document.getElementById('edit-channel-overlay');
-const editChannelForm       = document.getElementById('edit-channel-form');
-const editChannelNameInput  = document.getElementById('edit-channel-name');
-const editChannelDescInput  = document.getElementById('edit-channel-desc');
-const btnCancelEditChannel  = document.getElementById('btn-cancel-edit-channel');
-const editChannelError      = document.getElementById('edit-channel-error');
 
-// Edit Category modal
-const editCatOverlay        = document.getElementById('edit-cat-overlay');
-const editCatForm           = document.getElementById('edit-cat-form');
-const editCatNameInput      = document.getElementById('edit-cat-name');
-const btnCancelEditCat      = document.getElementById('btn-cancel-edit-cat');
-const editCatError          = document.getElementById('edit-cat-error');
 

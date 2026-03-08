@@ -395,86 +395,7 @@ createCatForm.addEventListener('submit', async (e) => {
   }
 });
 
-// --- Edit Channel modal --------------------------------------------------
-let editChannelTarget = null;
-
-function openEditChannelModal(ch) {
-  editChannelTarget = { id: ch.id };
-  editChannelNameInput.value = ch.name ?? '';
-  editChannelDescInput.value = ch.description ?? '';
-  editChannelError.textContent = '';
-  editChannelOverlay.classList.remove('hidden');
-  editChannelNameInput.focus();
-}
-
-btnCancelEditChannel.addEventListener('click', () => {
-  editChannelOverlay.classList.add('hidden');
-  editChannelTarget = null;
-});
-editChannelOverlay.addEventListener('click', (e) => {
-  if (e.target === editChannelOverlay) { editChannelOverlay.classList.add('hidden'); editChannelTarget = null; }
-});
-editChannelForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  if (!editChannelTarget) return;
-  editChannelError.textContent = '';
-  const name        = editChannelNameInput.value.trim();
-  const description = editChannelDescInput.value.trim() || undefined;
-  if (!name) return;
-  try {
-    const updated = await apiPatch(`/api/channels/${editChannelTarget.id}`, { name, description });
-    const idx = channels.findIndex(c => c.id === editChannelTarget.id);
-    if (idx !== -1) channels[idx] = { ...channels[idx], ...updated };
-    renderChannelList();
-    if (editChannelTarget.id === activeChannelId) {
-      channelNameLabel.textContent = updated.name ?? name;
-      messageInput.placeholder = `Message #${updated.name ?? name}`;
-    }
-    editChannelOverlay.classList.add('hidden');
-    editChannelTarget = null;
-  } catch (err) {
-    editChannelError.textContent = err.message;
-  }
-});
-
-// --- Edit Category modal -------------------------------------------------
-let editCatTarget = null;
-
-function openEditCatModal(cat) {
-  editCatTarget = { id: cat.id };
-  editCatNameInput.value = cat.name ?? '';
-  editCatError.textContent = '';
-  editCatOverlay.classList.remove('hidden');
-  editCatNameInput.focus();
-}
-
-btnCancelEditCat.addEventListener('click', () => {
-  editCatOverlay.classList.add('hidden');
-  editCatTarget = null;
-});
-editCatOverlay.addEventListener('click', (e) => {
-  if (e.target === editCatOverlay) { editCatOverlay.classList.add('hidden'); editCatTarget = null; }
-});
-editCatForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  if (!editCatTarget) return;
-  editCatError.textContent = '';
-  const name = editCatNameInput.value.trim();
-  if (!name) return;
-  try {
-    await apiPatch(`/api/categories/${editCatTarget.id}`, { name });
-    const cat = serverCategories.find(c => c.id === editCatTarget.id);
-    if (cat) cat.name = name;
-    channels = channels.map(c =>
-      c.category_id === editCatTarget.id ? { ...c, category_name: name } : c
-    );
-    renderChannelList();
-    editCatOverlay.classList.add('hidden');
-    editCatTarget = null;
-  } catch (err) {
-    editCatError.textContent = err.message;
-  }
-});
+// Channel / category settings handled by openChSettings() in server-settings.js
 
 // â”€â”€â”€ Members pane â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function renderMembersPane() {
@@ -621,7 +542,7 @@ ctxChEdit.addEventListener('click', () => {
   hideChContextMenu();
   if (!t) return;
   const ch = channels.find(c => c.id === t.id) ?? t;
-  openEditChannelModal(ch);
+  openChSettings('channel', ch);
 });
 
 ctxChDelete.addEventListener('click', () => {
@@ -657,7 +578,7 @@ ctxCatCreateChannel.addEventListener('click', () => {
 ctxCatEdit.addEventListener('click', () => {
   const t = catContextTarget;
   hideCatContextMenu();
-  if (t) openEditCatModal(t);
+  if (t) openChSettings('category', t);
 });
 
 ctxCatDelete.addEventListener('click', () => {
