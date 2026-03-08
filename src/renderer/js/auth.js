@@ -81,9 +81,15 @@ async function onAuthenticated(jwt, user) {
 
   startIdleTracking();
 
-  // Apply federation theme (overrides localStorage)
-  applyTheme(userSettings.theme ?? 'concordia');
-  localStorage.setItem('theme', normalizeTheme(userSettings.theme));
+  // Apply theme: use server value when explicitly set, otherwise keep the user's
+  // locally-stored preference (prevents relaunch always defaulting to 'concordia'
+  // when the server returns null / legacy 'dark' as the theme field).
+  const _rawServerTheme = userSettings.theme;
+  const _themeToApply = normalizeTheme(
+    (_rawServerTheme && _rawServerTheme !== 'dark') ? _rawServerTheme : localStorage.getItem('theme')
+  );
+  applyTheme(_themeToApply);
+  localStorage.setItem('theme', _themeToApply);
 
   updateUserDisplay();
 
