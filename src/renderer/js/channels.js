@@ -99,17 +99,44 @@ function renderChannelList() {
         label.appendChild(catAddBtn);
       }
 
-      if (isAdmin) {
-        // Dropping onto the category header = insert as first item in the category
+      if (isAdmin && group.categoryId) {
+        label.draggable = true;
+
+        label.addEventListener('dragstart', (e) => {
+          catDragSrcId = group.categoryId;
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', String(group.categoryId));
+          requestAnimationFrame(() => label.classList.add('ch-dragging'));
+        });
+
+        label.addEventListener('dragend', () => {
+          document.querySelectorAll('.ch-drop-line').forEach(el => el.remove());
+          channelList.querySelectorAll('.ch-dragging').forEach(el => el.classList.remove('ch-dragging'));
+          catDragSrcId  = null;
+          catDropBeforeId = null;
+        });
+
         label.addEventListener('dragover', (e) => {
           e.preventDefault();
           e.stopPropagation();
-          if (!chDragSrcId) return;
-          const firstOther = group.channels.find(c => c.id !== chDragSrcId);
-          chDropInfo = { toCategoryId: group.categoryId, beforeChannelId: firstOther?.id ?? null };
-          showDropLine(label, false);
+          if (catDragSrcId) {
+            // Category-over-category: show line above this label
+            if (group.categoryId === catDragSrcId) return;
+            catDropBeforeId = group.categoryId;
+            showDropLine(label, true);
+          } else if (chDragSrcId) {
+            // Channel dropped onto category header: insert as first channel in this category
+            const firstOther = group.channels.find(c => c.id !== chDragSrcId);
+            chDropInfo = { toCategoryId: group.categoryId, beforeChannelId: firstOther?.id ?? null };
+            showDropLine(label, false);
+          }
         });
-        label.addEventListener('drop', (e) => { e.preventDefault(); finalizeChannelDrop(); });
+
+        label.addEventListener('drop', (e) => {
+          e.preventDefault();
+          if (catDragSrcId) finalizeCategoryDrop();
+          else if (chDragSrcId) finalizeChannelDrop();
+        });
       }
 
       // Right-click: edit/rename (MANAGE_CATEGORIES) / delete (admin)
@@ -182,6 +209,37 @@ function renderChannelList() {
       channelList.appendChild(li);
     });
   });
+}
+
+function finalizeCategoryDrop() {
+  const srcId  = catDragSrcId;
+  const beforeId = catDropBeforeId;
+  catDragSrcId   = null;
+  catDropBeforeId = null;
+  document.querySelectorAll('.ch-drop-line').forEach(el => el.remove());
+  channelList.querySelectorAll('.ch-dragging').forEach(el => el.classList.remove('ch-dragging'));
+  if (!srcId || srcId === beforeId) return;
+
+  // Re-order categories optimistically
+  const sorted = [...serverCategories].sort((a, b) => a.position - b.position);
+  const withoutSrc = sorted.filter(c => c.id !== srcId);
+  const src = serverCategories.find(c => c.id === srcId);
+  if (!src) return;
+
+  const insertIdx = beforeId === null
+    ? withoutSrc.length
+    : (() => { const i = withoutSrc.findIndex(c => c.id === beforeId); return i === -1 ? withoutSrc.length : i; })();
+  withoutSrc.splice(insertIdx, 0, src);
+  withoutSrc.forEach((c, i) => { c.position = i; });
+
+  renderChannelList();
+
+  const payload = withoutSrc.map(c => ({ id: c.id, position: c.position }));
+  apiPut('/api/categories/reorder', payload)
+    .then(updated => { serverCategories = updated; renderChannelList(); })
+    .catch(async () => {
+      try { serverCategories = await apiGet('/api/categories'); renderChannelList(); } catch (_) {}
+    });
 }
 
 function finalizeChannelDrop() {
