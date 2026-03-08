@@ -40,8 +40,9 @@ function connectSocket() {
   });
 
   // â”€â”€ Server-push: server info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  socket.on('server:updated', ({ name, description }) => {
+  socket.on('server:updated', ({ name, description, icon_url }) => {
     if (name != null) serverNameLabel.textContent = name;
+    if (icon_url !== undefined) updateServerHeaderIcon(icon_url);
     // description is shown in the info overlay but doesn't need a live DOM update
   });
 

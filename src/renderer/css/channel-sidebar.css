@@ -82,6 +82,7 @@
   overflow-y: auto;
   list-style: none;
   padding: 0.5rem 0 72px;
+  user-select: none;
 }
 
 .channel-section-label {

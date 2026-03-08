@@ -31,7 +31,7 @@ let dragSrcId      = null;       // federation server id being dragged
 let dragOverTarget = null;       // { id: serverId|null, insertBefore: bool }
 let chDragSrcId    = null;       // channel id being dragged
 let chDropInfo     = null;       // { toCategoryId: number|null, beforeChannelId: number|null }
-let serverMembers    = [];       // [{ user_id, username, role, avatar_url }]
+let serverMembers    = [];       // [{ user_id, username, is_owner, role?, avatar_url }]
 let serverCategories = [];       // [{ id, name, position }] â€” full list incl. empty ones
 let chContextTarget  = null;     // { id, name, categoryId } â€“ channel right-click
 let catContextTarget = null;     // { id, name }           â€“ category right-click
@@ -74,6 +74,7 @@ const btnConfirmLeaveServer= document.getElementById('btn-confirm-leave-server')
 // Channel sidebar
 const serverNameLabel  = document.getElementById('server-name-label');
 const btnServerName    = document.getElementById('btn-server-name');
+const serverHeaderIcon = document.getElementById('server-header-icon');
 const channelList      = document.getElementById('channel-list');
 const currentUserLabel = document.getElementById('current-user-label');
 const currentUserAvatar= document.getElementById('current-user-avatar');

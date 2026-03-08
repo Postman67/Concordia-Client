@@ -20,6 +20,7 @@
   width: 100%;
   padding: 0 0 72px;
   scrollbar-width: none;
+  user-select: none;
 }
 #server-list-icons::-webkit-scrollbar { display: none; }
 

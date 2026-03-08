@@ -823,3 +823,171 @@ ssChBackBtn?.addEventListener('click', () => {
   ssChTreeView.classList.remove('hidden');
   loadSSChannels();
 });
+
+// ════════════════════════════════════════════════════════════════════
+//  CDN & MEDIA PANEL
+// ════════════════════════════════════════════════════════════════════
+
+function formatBytes(bytes) {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), units.length - 1);
+  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${units[i]}`;
+}
+
+function renderCdnHealth(container, health) {
+  if (!container) return;
+  if (!health || health.error) {
+    container.innerHTML = `<p class="ss-error">${escapeHtml(health?.error || 'Failed to load health info')}</p>`;
+    return;
+  }
+  const pct   = health.disk_usage_percent != null ? health.disk_usage_percent.toFixed(1) : '?';
+  const used  = formatBytes(health.media_used_bytes);
+  const avail = formatBytes(health.disk_available_bytes);
+  container.innerHTML = `
+    <div class="ss-cdn-stat-grid">
+      <div class="ss-cdn-stat">
+        <div class="ss-cdn-stat-label">Disk Used</div>
+        <div class="ss-cdn-stat-value">${escapeHtml(pct)}%</div>
+      </div>
+      <div class="ss-cdn-stat">
+        <div class="ss-cdn-stat-label">Media Size</div>
+        <div class="ss-cdn-stat-value">${escapeHtml(used)}</div>
+      </div>
+      <div class="ss-cdn-stat">
+        <div class="ss-cdn-stat-label">Available</div>
+        <div class="ss-cdn-stat-value">${escapeHtml(avail)}</div>
+      </div>
+    </div>`;
+}
+
+function renderCdnMetrics(container, metrics) {
+  if (!container) return;
+  if (!metrics || metrics.error) {
+    container.innerHTML = `<p class="ss-error">${escapeHtml(metrics?.error || 'Failed to load metrics')}</p>`;
+    return;
+  }
+  const up = metrics.totals?.upload   ?? { count: 0, bytes: 0 };
+  const dl = metrics.totals?.download ?? { count: 0, bytes: 0 };
+  container.innerHTML = `
+    <div class="ss-cdn-stat-grid">
+      <div class="ss-cdn-stat">
+        <div class="ss-cdn-stat-label">Uploads</div>
+        <div class="ss-cdn-stat-value">${escapeHtml(String(up.count))} (${escapeHtml(formatBytes(up.bytes))})</div>
+      </div>
+      <div class="ss-cdn-stat">
+        <div class="ss-cdn-stat-label">Downloads</div>
+        <div class="ss-cdn-stat-value">${escapeHtml(String(dl.count))} (${escapeHtml(formatBytes(dl.bytes))})</div>
+      </div>
+    </div>`;
+}
+
+async function loadSSCdn() {
+  // Parallel load — any failure is non-fatal
+  const [settingsRes, infoRes, healthRes, metricsRes] = await Promise.all([
+    apiGet('/api/server/settings').catch(e => ({ _err: e.message })),
+    apiGet('/api/server/info').catch(e => ({ _err: e.message })),
+    apiGet('/api/cdn/health').catch(e => ({ error: e.message })),
+    apiGet('/api/cdn/metrics').catch(e => ({ error: e.message })),
+  ]);
+
+  // ── Icon preview ──────────────────────────────────────────────
+  const iconPreview     = document.getElementById('ss-cdn-icon-preview');
+  const iconPlaceholder = document.getElementById('ss-cdn-icon-placeholder');
+  if (iconPreview) {
+    const url = infoRes?.icon_url;
+    if (url) {
+      iconPreview.src = /^https?:\/\//.test(url) ? url : `${activeServerUrl}${url}`;
+      iconPreview.style.display = '';
+      if (iconPlaceholder) iconPlaceholder.style.display = 'none';
+    } else {
+      iconPreview.src = '';
+      iconPreview.style.display = 'none';
+      if (iconPlaceholder) iconPlaceholder.style.display = '';
+    }
+  }
+
+  // ── Compression level ────────────────────────────────────────
+  const compressInput = document.getElementById('ss-cdn-compress-input');
+  if (compressInput && settingsRes?.media_compression_level != null) {
+    compressInput.value = settingsRes.media_compression_level;
+  }
+
+  // ── Health & Metrics ─────────────────────────────────────────
+  renderCdnHealth(document.getElementById('ss-cdn-health'), healthRes);
+  renderCdnMetrics(document.getElementById('ss-cdn-metrics'), metricsRes);
+}
+
+// ── Icon upload ───────────────────────────────────────────────────
+document.getElementById('ss-cdn-icon-input')?.addEventListener('change', async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const iconStatus = document.getElementById('ss-cdn-icon-status');
+  const formData = new FormData();
+  formData.append('icon', file);
+  try {
+    // Do NOT set Content-Type — the browser must set it (with the multipart boundary)
+    const res = await fetch(`${activeServerUrl}/api/upload/icon`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const json = await res.json();
+    if (!res.ok) { setSaveStatus(iconStatus, json.error || 'Upload failed', true); return; }
+    if (json.icon_url) updateServerHeaderIcon(json.icon_url);
+    setSaveStatus(iconStatus, 'Icon uploaded!', false);
+    loadSSCdn();
+  } catch (err) {
+    setSaveStatus(iconStatus, err.message, true);
+  }
+  e.target.value = '';
+});
+
+// ── Icon delete ───────────────────────────────────────────────────
+document.getElementById('ss-cdn-icon-delete-btn')?.addEventListener('click', async () => {
+  const iconStatus = document.getElementById('ss-cdn-icon-status');
+  try {
+    await apiDelete('/api/upload/icon');
+    updateServerHeaderIcon(null);
+    setSaveStatus(iconStatus, 'Icon removed.', false);
+    loadSSCdn();
+  } catch (err) {
+    setSaveStatus(iconStatus, err.message, true);
+  }
+});
+
+// ── Compression save ──────────────────────────────────────────────
+document.getElementById('ss-cdn-compress-btn')?.addEventListener('click', async () => {
+  const input  = document.getElementById('ss-cdn-compress-input');
+  const status = document.getElementById('ss-cdn-compress-status');
+  const level  = parseInt(input?.value, 10);
+  if (isNaN(level) || level < 0 || level > 100) {
+    setSaveStatus(status, 'Level must be 0–100', true);
+    return;
+  }
+  try {
+    await apiPatch('/api/server/settings', { media_compression_level: level });
+    setSaveStatus(status, 'Saved!', false);
+  } catch (err) {
+    setSaveStatus(status, err.message, true);
+  }
+});
+
+// ── Bulk optimize ─────────────────────────────────────────────────
+document.getElementById('ss-cdn-optimize-btn')?.addEventListener('click', async () => {
+  const status = document.getElementById('ss-cdn-optimize-status');
+  const btn    = document.getElementById('ss-cdn-optimize-btn');
+  btn.disabled = true;
+  setSaveStatus(status, 'Running…', false);
+  try {
+    const r = await apiPost('/api/cdn/optimize', {});
+    const saved = r.bytes_saved != null ? ` — ${formatBytes(r.bytes_saved)} saved` : '';
+    setSaveStatus(status, `Done! ${r.processed ?? 0} file(s) processed${saved}.`, false);
+    loadSSCdn();
+  } catch (err) {
+    setSaveStatus(status, err.message, true);
+  } finally {
+    btn.disabled = false;
+  }
+});

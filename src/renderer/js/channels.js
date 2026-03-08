@@ -4,6 +4,7 @@
 // --- Permission helpers -------------------------------------------------
 function hasPerm(key) {
   if (currentUserRole === 'admin') return true;
+  if (myPermissions?.is_owner) return true;
   return myPermissions?.resolved?.[key] === true;
 }
 
@@ -420,13 +421,13 @@ editCatForm.addEventListener('submit', async (e) => {
 function renderMembersPane() {
   membersPaneList.innerHTML = '';
   if (!serverMembers.length) return;
+  // Group by owner flag (new API) with fallback to legacy role field
+  const isOwnerMember = m => m.is_owner === true || m.role === 'admin';
   const groups = [
-    { key: 'admin',     label: 'Admin'      },
-    { key: 'moderator', label: 'Moderators' },
-    { key: 'member',    label: 'Members'    },
+    { members: serverMembers.filter(m =>  isOwnerMember(m)), label: 'Owner'   },
+    { members: serverMembers.filter(m => !isOwnerMember(m)), label: 'Members' },
   ];
-  groups.forEach(({ key, label }) => {
-    const groupMembers = serverMembers.filter(m => m.role === key);
+  groups.forEach(({ members: groupMembers, label }) => {
     if (!groupMembers.length) return;
     const groupLabel = document.createElement('div');
     groupLabel.className = 'members-pane-group-label';
@@ -463,6 +464,13 @@ function renderMembersPane() {
       const nameEl = document.createElement('span');
       nameEl.className = 'members-pane-name';
       nameEl.textContent = m.username;
+      if (isOwnerMember(m)) {
+        const crown = document.createElement('span');
+        crown.className = 'member-owner-crown';
+        crown.title = 'Server Owner';
+        crown.textContent = ' \u{1F451}';
+        nameEl.appendChild(crown);
+      }
       row.appendChild(wrap);
       row.appendChild(nameEl);
       membersPaneList.appendChild(row);

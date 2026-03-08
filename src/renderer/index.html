@@ -73,6 +73,7 @@
           <!-- Channels header -->
           <div class="sidebar-header">
             <button id="btn-server-name" class="server-name-btn" title="Server menu" disabled>
+              <img id="server-header-icon" class="server-header-icon" alt="" style="display:none" />
               <span id="server-name-label">Channels</span>
               <svg id="server-name-chevron" class="server-name-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
@@ -412,6 +413,7 @@
         <div class="ss-nav-divider"></div>
         <p class="ss-nav-section-label">CONTENT</p>
         <button class="ss-nav-item" data-panel="channels">&#35;&nbsp; Channels &amp; Categories</button>
+        <button class="ss-nav-item" data-panel="cdn">&#128247;&nbsp; Media &amp; CDN</button>
         <div class="ss-nav-divider"></div>
         <button id="ss-close-btn" class="ss-nav-item ss-nav-item--danger">&#10005;&nbsp; Close</button>
       </div>
@@ -474,6 +476,64 @@
           <div id="ss-ch-detail-view" class="hidden">
             <button id="ss-ch-back-btn" class="btn-secondary ss-back-btn">&#8592; Back to List</button>
             <div id="ss-ch-detail-content" style="margin-top:1rem"></div>
+          </div>
+        </div>
+
+        <!-- Media & CDN panel -->
+        <div id="ss-panel-cdn" class="ss-panel hidden">
+          <h2 class="ss-panel-title">Media &amp; CDN</h2>
+
+          <!-- Server Icon -->
+          <div class="settings-section">
+            <p class="ss-section-heading">SERVER ICON</p>
+            <div class="ss-icon-upload-row">
+              <div class="ss-icon-preview-wrap">
+                <img id="ss-cdn-icon-preview" class="ss-icon-preview" alt="Server icon" />
+                <span id="ss-cdn-icon-placeholder" class="ss-icon-no-icon">No icon</span>
+              </div>
+              <div class="ss-icon-actions">
+                <label class="btn-secondary btn-sm ss-icon-upload-label" for="ss-cdn-icon-input">&#8593; Upload</label>
+                <input id="ss-cdn-icon-input" type="file" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none" />
+                <button id="ss-cdn-icon-delete-btn" class="btn-danger btn-sm">Remove</button>
+              </div>
+            </div>
+            <p id="ss-cdn-icon-status" class="ss-save-status" style="margin-top:0.5rem;min-height:1.1em"></p>
+          </div>
+
+          <!-- Compression -->
+          <div class="settings-section">
+            <p class="ss-section-heading">IMAGE COMPRESSION</p>
+            <p class="ss-perm-note">0 = disabled (store originals). 1–100 = optimization intensity applied at upload time.</p>
+            <div class="ss-field-row">
+              <label for="ss-cdn-compress-input">Compression Level</label>
+              <div style="display:flex;align-items:center;gap:0.65rem">
+                <input id="ss-cdn-compress-input" type="number" min="0" max="100" style="width:76px" />
+                <button id="ss-cdn-compress-btn" class="btn-primary btn-sm">Save</button>
+                <p id="ss-cdn-compress-status" class="ss-save-status" style="margin:0;flex:1"></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bulk optimize -->
+          <div class="settings-section">
+            <p class="ss-section-heading">BULK OPTIMIZE</p>
+            <p class="ss-perm-note">Re-compress all existing images at the current compression level. No-op if level is 0.</p>
+            <div style="display:flex;align-items:center;gap:0.65rem">
+              <button id="ss-cdn-optimize-btn" class="btn-secondary btn-sm">Run Optimization</button>
+              <p id="ss-cdn-optimize-status" class="ss-save-status" style="margin:0;flex:1"></p>
+            </div>
+          </div>
+
+          <!-- Disk Health -->
+          <div class="settings-section">
+            <p class="ss-section-heading">DISK HEALTH</p>
+            <div id="ss-cdn-health"><p class="ss-loading">Loading…</p></div>
+          </div>
+
+          <!-- Metrics -->
+          <div class="settings-section">
+            <p class="ss-section-heading">METRICS</p>
+            <div id="ss-cdn-metrics"><p class="ss-loading">Loading…</p></div>
           </div>
         </div>
 

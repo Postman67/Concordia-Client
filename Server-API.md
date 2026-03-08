@@ -4,7 +4,7 @@
 > Clients log in via `https://federation.concordiachat.com` and pass the resulting JWT to this server.  
 > This server stores **no passwords, no emails** — only Federation user IDs.
 
-**Last updated on:** Saturday, March 7, 2026 at 17:00:00
+**Last updated on:** Saturday, March 7, 2026 at 17:00:00 · [Changelog](server-api-changelog.md)
 
 > **User IDs are UUIDs** (e.g. `"a3f8c21d-7e44-4b1c-9f02-3d5e6a8b1c0f"`). The Federation issues these on registration.
 
@@ -48,9 +48,12 @@ Public. Returns server metadata and current member count.
 {
   "name": "My Concordia Server",
   "description": "A place to chat.",
-  "member_count": 42
+  "member_count": 42,
+  "icon_url": "/cdn/icon/server.png"
 }
 ```
+
+> `icon_url` is `null` when no icon has been uploaded.
 
 ---
 
@@ -62,12 +65,12 @@ Joins the authenticated user to this server. Call this when a user adds the serv
 ```json
 {
   "message": "Joined server successfully.",
-  "is_admin": false,
+  "is_owner": false,
   "server": { "name": "My Concordia Server", "description": "A place to chat." }
 }
 ```
 
-> `is_admin` is `true` only if the joining user matches the `admin_user_id` configured in server settings.
+> `is_owner` is `true` when the joining user is the server owner (matches `admin_user_id` in settings or the `ADMIN_USER_ID` env var). The owner has every permission enabled regardless of roles.
 
 **`401`** Missing/invalid federation token · **`500`** Server error
 
@@ -75,7 +78,7 @@ Joins the authenticated user to this server. Call this when a user adds the serv
 
 ### `GET /api/server/@me` 🔒
 
-Returns the authenticated user's member record, admin flag, and assigned roles. Call this on client startup (after the initial join) or whenever permissions may have changed.
+Returns the authenticated user's member record, owner flag, and assigned roles. Call this on client startup (after the initial join) or whenever permissions may have changed.
 
 **`200 OK`**
 ```json
@@ -84,12 +87,14 @@ Returns the authenticated user's member record, admin flag, and assigned roles. 
   "username": "petersmith",
   "avatar_url": "https://example.com/avatar.png",
   "joined_at": "2026-03-07T10:00:00.000Z",
-  "is_admin": false,
+  "is_owner": false,
   "roles": [
     { "id": 2, "name": "Moderators", "color": "#3498db", "position": 1, "permissions": "48", "is_everyone": false }
   ]
 }
 ```
+
+> `is_owner: true` means the user is the server owner and has every permission. Use this to render an owner crown/badge in the client UI.
 
 **`401`** Missing/invalid federation token · **`404`** Not a member of this server · **`500`** Server error
 
@@ -108,6 +113,7 @@ Returns the list of users who have joined this server, including their assigned 
       "username": "petersmith",
       "avatar_url": "https://example.com/avatar.png",
       "joined_at": "2026-03-07T10:00:00.000Z",
+      "is_owner": true,
       "roles": [
         { "id": 2, "name": "Moderators", "color": "#3498db", "position": 1, "permissions": "48", "is_everyone": false }
       ]
@@ -117,11 +123,14 @@ Returns the list of users who have joined this server, including their assigned 
       "username": "alice",
       "avatar_url": null,
       "joined_at": "2026-03-07T10:05:00.000Z",
+      "is_owner": false,
       "roles": []
     }
   ]
 }
 ```
+
+> `is_owner: true` identifies the server owner. Use this to display a crown or special badge in member lists.
 
 **`401`** Missing/invalid federation token · **`500`** Server error
 
@@ -155,6 +164,7 @@ Updates one or more server settings. Only the fields you include are changed.
 | `name` | string | 1–100 chars. |
 | `description` | string | 0–500 chars. |
 | `admin_user_id` | string | Valid UUID (Federation user ID of the new admin), or `""` to unset. |
+| `media_compression_level` | integer | 0–100. `0` = disabled (store originals). `1–100` = optimization level; higher values produce smaller files at the cost of visual quality. See [Compression](#compression). |
 
 ```json
 { "name": "Main Hub", "description": "A place to hang out." }
@@ -166,7 +176,8 @@ Updates one or more server settings. Only the fields you include are changed.
 {
   "name": "Main Hub",
   "description": "A place to hang out.",
-  "admin_user_id": "a3f8c21d-7e44-4b1c-9f02-3d5e6a8b1c0f"
+  "admin_user_id": "a3f8c21d-7e44-4b1c-9f02-3d5e6a8b1c0f",
+  "media_compression_level": 40
 }
 ```
 
@@ -327,6 +338,7 @@ Resolves and returns the calling user's effective permission bitmask. Optionally
 ```json
 {
   "bits": "14",
+  "is_owner": false,
   "resolved": {
     "ADMINISTRATOR": false,
     "VIEW_CHANNELS": true,
@@ -342,6 +354,8 @@ Resolves and returns the calling user's effective permission bitmask. Optionally
   }
 }
 ```
+
+> When `is_owner` is `true`, `bits` will equal the value of `ALL_PERMISSIONS` and every `resolved` entry will be `true`.
 
 ---
 
@@ -749,7 +763,7 @@ These events are broadcast to **all connected clients** whenever an admin or mod
 
 | Event | Payload | Trigger |
 |-------|---------|----|
-| `server:updated` | `{ name, description }` | `PATCH /api/server/settings` (name or description changed) |
+| `server:updated` | `{ name?, description?, icon_url? }` | `PATCH /api/server/settings` (name or description changed); `POST`/`DELETE /api/upload/icon` (icon changed) |
 
 #### Categories
 
@@ -821,6 +835,166 @@ socket.on('error', ({ message }) => console.error('Server error:', message));
 
 ---
 
+## CDN — `/cdn`
+
+The server doubles as a mini CDN for served media files. All content under `/cdn` is served as public static files with `Cross-Origin-Resource-Policy: cross-origin` so clients on different origins can load them directly.
+
+| Sub-path | Purpose |
+|----------|---------|
+| `/cdn/icon/*` | Server icon (managed via the upload API) |
+| `/cdn/emoji/*` | Custom emoji (reserved — not yet implemented) |
+| `/cdn/stickers/*` | Sticker packs (reserved — not yet implemented) |
+| `/cdn/images/*` | Image attachments (reserved — not yet implemented) |
+| `/cdn/videos/*` | Video attachments (reserved — not yet implemented) |
+| `/cdn/gifs/*` | GIF attachments (reserved — not yet implemented) |
+
+Files are stored in the directory pointed to by the `MEDIA_PATH` environment variable (default `./media`). Each sub-path maps directly to a subfolder: `<MEDIA_PATH>/icon/`, `<MEDIA_PATH>/emoji/`, etc.
+
+Every download served from `/cdn` is automatically recorded in the metrics table for egress tracking.
+
+> **Icon URL format** — `icon_url` returned by `/api/server/info` is a root-relative path (e.g. `/cdn/icon/server.png`). Prepend the server origin on the client side.
+
+---
+
+## Compression
+
+The server can automatically compress uploaded images using [sharp](https://sharp.pixelplumbing.com/). Compression is controlled by the `media_compression_level` setting (configured via `PATCH /api/server/settings`).
+
+| Level | Behaviour |
+|-------|-----------|
+| `0` | **Disabled.** Files stored exactly as uploaded — no processing. |
+| `1–100` | **Enabled.** Higher values apply more compression. Quality = `100 − level × 0.5` (range 50–99), so even at the maximum level the quality floor is 50. |
+
+**Supported formats for compression:** JPEG (uses MozJPEG encoder), PNG, WebP  
+**Skipped formats:** GIF, and any format not in the above list — stored as-is regardless of level.
+
+Files are only replaced when the compressed result is smaller than the original (so re-encoding never inflates a file).
+
+Use `POST /api/cdn/optimize` to retroactively compress files that were uploaded before compression was enabled.
+
+---
+
+## Upload — `/api/upload`
+
+Endpoints for managing uploaded server media. All require authentication and the `MANAGE_SERVER` permission.
+
+### `POST /api/upload/icon` 🔒
+
+Uploads (or replaces) the server icon. Send as `multipart/form-data` with the file in the `icon` field.
+
+**Allowed types:** `image/png`, `image/jpeg`, `image/gif`, `image/webp`  
+**Max size:** 8 MB  
+**Required permission:** `MANAGE_SERVER`
+
+The file is always stored as `server.<ext>` (e.g. `server.png`). If a previous icon with a different extension exists it is deleted automatically.
+
+**`200 OK`**
+```json
+{ "icon_url": "/cdn/icon/server.png" }
+```
+
+**Error responses**
+
+| Status | Meaning |
+|--------|---------|
+| `400` | No file provided, wrong MIME type, or file exceeds 8 MB |
+| `403` | Missing `MANAGE_SERVER` permission |
+
+---
+
+### `DELETE /api/upload/icon` 🔒
+
+Removes the current server icon and clears the setting.
+
+**Required permission:** `MANAGE_SERVER`
+
+**`204 No Content`** on success.
+
+| Status | Meaning |
+|--------|---------|
+| `404` | No icon is currently set |
+| `403` | Missing `MANAGE_SERVER` permission |
+
+---
+
+## CDN Management — `/api/cdn` 🔒
+
+All endpoints in this section require authentication and the `MANAGE_SERVER` permission.
+
+### `GET /api/cdn/health`
+
+Returns disk space available on the volume hosting `MEDIA_PATH` and the number of files stored per CDN subfolder.
+
+**`200 OK`**
+```json
+{
+  "media_path": "/data/media",
+  "disk_total_bytes": 107374182400,
+  "disk_used_bytes":  21474836480,
+  "disk_available_bytes": 85899345920,
+  "disk_usage_percent": 20.0,
+  "media_used_bytes": 45312,
+  "file_counts": {
+    "icon": 1,
+    "emoji": 0,
+    "stickers": 0,
+    "images": 0,
+    "videos": 0,
+    "gifs": 0
+  }
+}
+```
+
+> `disk_usage_percent` and disk byte fields may be `0` / `null` on environments where OS-level disk stats are unavailable.
+
+---
+
+### `GET /api/cdn/metrics`
+
+Returns ingress (upload) and egress (download) statistics tracked by the server.
+
+**`200 OK`**
+```json
+{
+  "totals": {
+    "upload":   { "count": 3, "bytes": 48200 },
+    "download": { "count": 120, "bytes": 5760000 },
+    "delete":   { "count": 1, "bytes": 0 }
+  },
+  "by_subfolder": [
+    { "subfolder": "icon", "event_type": "upload",   "count": 3, "bytes": 48200 },
+    { "subfolder": "icon", "event_type": "download", "count": 120, "bytes": 5760000 }
+  ],
+  "last_30_days": [
+    { "day": "2026-03-07", "event_type": "download", "count": 15, "bytes": 720000 }
+  ]
+}
+```
+
+---
+
+### `POST /api/cdn/optimize`
+
+Bulk-recompresses all eligible image files currently stored across all CDN subdirectories using the active `media_compression_level`. Useful after enabling compression for the first time, or after increasing the level.
+
+- Returns immediately with a summary. GIFs and unrecognised formats are skipped.
+- Files are only replaced when the compressed result is smaller (never inflates).
+- If `media_compression_level` is `0` the endpoint returns immediately with a message and `processed: 0`.
+
+**`200 OK`**
+```json
+{
+  "processed": 4,
+  "skipped": 1,
+  "errors": 0,
+  "bytes_before": 204800,
+  "bytes_after":  143360,
+  "bytes_saved":   61440
+}
+```
+
+---
+
 ## First-time setup
 
 All server settings are stored in the database and managed from the client. The workflow for a fresh deployment is:
@@ -846,6 +1020,7 @@ All server settings are stored in the database and managed from the client. The 
 | `FEDERATION_URL` | `https://federation.concordiachat.com` | Override for local Federation instances |
 | `ADMIN_USER_ID` | `` | Bootstrap admin on first deploy (seeds DB if `admin_user_id` is unset). Must be a valid Federation user UUID. Also acts as a permanent emergency override when set. |
 | `CLIENT_ORIGIN` | `*` | CORS allowed origin |
+| `MEDIA_PATH` | `./media` | Absolute or relative path where uploaded media files (icons, etc.) are stored. Resolved relative to the process working directory when not absolute. |
 
 Server name, description, and admin are stored in the `server_settings` database table and managed via `PATCH /api/server/settings`. The only **required** env var for a fresh deployment is `DB_PASSWORD`.
 
@@ -861,3 +1036,7 @@ The schema and all migrations are applied automatically at startup by the built-
 | `002_federation_auth.sql` | Upgrade path from original `users`-table schema |
 | `003_categories_roles.sql` | Adds `role` to members, `position`/`category_id` to channels |
 | `004_server_settings.sql` | `server_settings` table for client-managed configuration |
+| `005_avatar_url.sql` | Adds `avatar_url` to members |
+| `006_permissions.sql` | Roles, member_roles, channel/category permission overrides |
+| `007_server_icon.sql` | Adds `icon` key to server_settings |
+| `008_media_metrics.sql` | `media_metrics` table; adds `media_compression_level` to server_settings |

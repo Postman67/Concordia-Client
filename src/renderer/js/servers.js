@@ -321,6 +321,7 @@ ssNavItems.forEach(btn => btn.addEventListener('click', () => {
   if (btn.dataset.panel === 'roles')    loadSSRoles();
   if (btn.dataset.panel === 'members')  loadSSMembersNew();
   if (btn.dataset.panel === 'channels') loadSSChannels();
+  if (btn.dataset.panel === 'cdn')      loadSSCdn();
 }));
 
 ssCloseBtn.addEventListener('click', closeServerSettings);
@@ -406,6 +407,8 @@ async function selectServer(fedServerId, restoreChannelId = null) {
   // Show cached server_name immediately while we wait for the join response
   serverNameLabel.textContent = srv.server_name || 'Channels';
   btnServerName.disabled = false;
+  // Clear any previous server icon until we get fresh info
+  updateServerHeaderIcon(null);
 
   // Reset placeholder to default text before connecting
   noChannelPlaceholder.querySelector('p').textContent = 'Select a channel to start chatting';
@@ -426,23 +429,29 @@ async function selectServer(fedServerId, restoreChannelId = null) {
         fedPatch(`/api/servers/${fedServerId}`, { server_name: realName }).catch(() => {});
       }
     }
-    // join now returns the caller's effective role directly
-    if (joinRes?.role) currentUserRole = joinRes.role;
+    // is_owner (new API) or is_admin (old API) determines admin access
+    const joinOwner = joinRes?.is_owner ?? joinRes?.is_admin;
+    if (joinOwner != null) currentUserRole = joinOwner ? 'admin' : 'member';
+    else if (joinRes?.role) currentUserRole = joinRes.role; // legacy fallback
   } catch (_) {}
 
-  // Confirm role via GET /api/server/@me which returns `effective_role` and `avatar_url`.
-  // This handles the admin_user_id override case where a user's DB role is
-  // "member" but they are the designated admin.
+  // Confirm owner/role via GET /api/server/@me (is_owner overrides any cached role).
   try {
     const me = await apiGet('/api/server/@me');
-    currentUserRole = me?.effective_role ?? me?.role ?? currentUserRole;
-    // Server mirrors the Federation avatar â€” seed the cache so messages show our PFP
+    const meOwner = me?.is_owner ?? me?.is_admin;
+    if (meOwner != null) currentUserRole = meOwner ? 'admin' : 'member';
+    else currentUserRole = me?.effective_role ?? me?.role ?? currentUserRole;
+    // Server mirrors the Federation avatar — seed the cache so messages show our PFP
     if (me?.avatar_url) avatarCache[String(currentUser.id)] = me.avatar_url;
   } catch (_) { /* keep role from join response */ }
 
   ctxServerSettings.style.display = currentUserRole === 'admin' ? '' : 'none';
 
-  // Load members in background: seed avatar cache and populate member pane
+  // Fetch server icon and load members in parallel (background — non-blocking)
+  apiGet('/api/server/info').then(info => {
+    if (info?.icon_url) updateServerHeaderIcon(info.icon_url);
+  }).catch(() => {});
+
   apiGet('/api/server/members').then(({ members }) => {
     serverMembers = members ?? [];
     serverMembers.forEach(m => {
@@ -457,6 +466,19 @@ async function selectServer(fedServerId, restoreChannelId = null) {
 function buildServerUrl(address) {
   if (/^https?:\/\//.test(address)) return address; // explicit scheme wins
   return `https://${address}`;
+}
+
+function updateServerHeaderIcon(iconUrl) {
+  if (!serverHeaderIcon) return;
+  if (iconUrl) {
+    // icon_url is root-relative — prepend the active server origin
+    const src = /^https?:\/\//.test(iconUrl) ? iconUrl : `${activeServerUrl}${iconUrl}`;
+    serverHeaderIcon.src = src;
+    serverHeaderIcon.style.display = '';
+  } else {
+    serverHeaderIcon.style.display = 'none';
+    serverHeaderIcon.src = '';
+  }
 }
 
 // â”€â”€â”€ Add server â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
