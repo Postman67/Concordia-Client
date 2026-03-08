@@ -80,9 +80,8 @@ async function onAuthenticated(jwt, user) {
   }, 25000);
 
   // Apply federation theme (overrides localStorage)
-  const isLight = userSettings.theme === 'light';
-  applyTheme(isLight);
-  localStorage.setItem('theme', userSettings.theme ?? 'dark');
+  applyTheme(userSettings.theme ?? 'concordia');
+  localStorage.setItem('theme', normalizeTheme(userSettings.theme));
 
   updateUserDisplay();
 

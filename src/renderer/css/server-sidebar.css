@@ -96,7 +96,7 @@
   margin: 4px 0;
   flex-shrink: 0;
 }
-body.light .server-list-divider { background: rgba(0,0,0,0.1); }
+body.theme-mono-light .server-list-divider { background: rgba(0,0,0,0.1); }
 
 /* â”€â”€â”€ Server drag-to-reorder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .server-icon-wrap.dragging { opacity: 0.3; }

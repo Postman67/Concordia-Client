@@ -27,24 +27,44 @@
   --pill-color:        #ffffff;
 }
 
-/* â”€â”€â”€ Light theme â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-body.light {
-  --bg:                #ffffff;
-  --surface0:          #f3f4f6;   /* Gray 100 */
-  --surface1:          #e5e7eb;   /* Gray 200 */
-  --surface2:          #d1d5db;   /* Gray 300 */
-  --overlay0:          #9ca3af;   /* Gray 400 */
-  --text:              #111827;   /* Gray 900 */
-  --subtext0:          #6b7280;   /* Gray 500 */
-  --subtext1:          #374151;   /* Gray 700 */
-  --primary:           #4f46e5;
-  --primary-hover:     #4338ca;
-  --primary-text:      #4f46e5;
-  --red:               #ef4444;
+/* ─── Mono Dark theme ─────────────────────────────────────────── */
+body.theme-mono-dark {
+  --bg:                #111111;
+  --surface0:          #1c1c1c;
+  --surface1:          #2a2a2a;
+  --surface2:          #3a3a3a;
+  --overlay0:          #555555;
+  --text:              #e8e8e8;
+  --subtext0:          #9a9a9a;
+  --subtext1:          #c0c0c0;
+  --primary:           #777777;
+  --primary-hover:     #606060;
+  --primary-text:      #aaaaaa;
+  --red:               #e05555;
+  --msg-hover:         rgba(255,255,255,0.04);
+  --logo-filter:       brightness(0) invert(1);
+  --server-sidebar-bg: #0a0a0a;
+  --pill-color:        #ffffff;
+}
+
+/* ─── Mono Light theme ────────────────────────────────────────── */
+body.theme-mono-light {
+  --bg:                #f9f9f9;
+  --surface0:          #f0f0f0;
+  --surface1:          #e0e0e0;
+  --surface2:          #cccccc;
+  --overlay0:          #999999;
+  --text:              #161616;
+  --subtext0:          #666666;
+  --subtext1:          #444444;
+  --primary:           #666666;
+  --primary-hover:     #444444;
+  --primary-text:      #555555;
+  --red:               #cc3333;
   --msg-hover:         rgba(0,0,0,0.04);
   --logo-filter:       none;
-  --server-sidebar-bg: #e0e7ff;
-  --pill-color:        #4f46e5;
+  --server-sidebar-bg: #e8e8e8;
+  --pill-color:        #666666;
 }
 
 html, body {

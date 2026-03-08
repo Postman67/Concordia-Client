@@ -78,26 +78,25 @@
             </button>
           </div>
           <ul id="channel-list"></ul>
+          <!-- User banner floats at the bottom of the channel sidebar -->
+          <div class="sidebar-footer">
+            <div class="sidebar-user" id="sidebar-user">
+              <div class="avatar-wrap">
+                <div class="sidebar-user-avatar" id="current-user-avatar">
+                  <img alt="" style="display:none" />
+                  <span></span>
+                </div>
+                <span class="status-badge" id="current-user-status-badge" data-status="offline"></span>
+              </div>
+              <span id="current-user-label"></span>
+            </div>
+            <div class="sidebar-footer-actions">
+              <button id="btn-settings" class="icon-btn" title="Settings">&#9881;</button>
+              <button id="btn-logout" class="icon-btn" title="Log out">&#9211;</button>
+            </div>
+          </div>
         </aside>
 
-      </div>
-
-      <!-- User banner (full bottom of left panel) -->
-      <div class="sidebar-footer">
-        <div class="sidebar-user" id="sidebar-user">
-          <div class="avatar-wrap">
-            <div class="sidebar-user-avatar" id="current-user-avatar">
-              <img alt="" style="display:none" />
-              <span></span>
-            </div>
-            <span class="status-badge" id="current-user-status-badge" data-status="offline"></span>
-          </div>
-          <span id="current-user-label"></span>
-        </div>
-        <div class="sidebar-footer-actions">
-          <button id="btn-settings" class="icon-btn" title="Settings">&#9881;</button>
-          <button id="btn-logout" class="icon-btn" title="Log out">&#9211;</button>
-        </div>
       </div>
     </div>
 
@@ -158,43 +157,86 @@
 
   <!-- Settings modal -->
   <div id="settings-overlay" class="modal-overlay hidden">
-    <div class="modal settings-modal">
-      <div class="modal-header">
-        <h2>Settings</h2>
-        <button id="btn-close-settings" class="icon-btn" title="Close">&times;</button>
+    <div class="user-settings-modal">
+      <div class="user-settings-sidebar">
+        <p class="us-section-label">User</p>
+        <button class="us-nav-item active" data-panel="profile">Profile</button>
+        <div class="ss-nav-divider"></div>
+        <p class="us-section-label">Appearance</p>
+        <button class="us-nav-item" data-panel="appearance">Themes</button>
+        <div class="ss-nav-divider"></div>
+        <p class="us-section-label">Info</p>
+        <button class="us-nav-item" data-panel="about">About</button>
       </div>
-      <div class="settings-section">
-        <h3>Profile</h3>
-        <div class="setting-row">
-          <div class="setting-label-group">
-            <span class="setting-label">Display name</span>
-            <span class="setting-desc">Shown in chat instead of your username</span>
-          </div>
-          <input id="settings-display-name" type="text" placeholder="Display name" style="width:160px" />
+      <div class="user-settings-content">
+        <div class="us-content-header">
+          <span id="us-panel-title" class="us-panel-title">Profile</span>
+          <button id="btn-close-settings" class="icon-btn" title="Close">&times;</button>
         </div>
-        <div class="setting-row">
-          <div class="setting-label-group">
-            <span class="setting-label">Avatar URL</span>
-            <span class="setting-desc">Link to your profile picture</span>
+
+        <!-- Profile panel -->
+        <div id="us-panel-profile" class="us-panel">
+          <div class="setting-row">
+            <div class="setting-label-group">
+              <span class="setting-label">Display name</span>
+              <span class="setting-desc">Shown in chat instead of your username</span>
+            </div>
+            <input id="settings-display-name" type="text" placeholder="Display name" style="width:160px" />
           </div>
-          <input id="settings-avatar-url" type="text" placeholder="https://..." style="width:160px" />
-        </div>
-      </div>
-      <div class="settings-section">
-        <h3>Appearance</h3>
-        <div class="setting-row">
-          <div class="setting-label-group">
-            <span class="setting-label">Light mode</span>
-            <span class="setting-desc">Switch between dark and light theme</span>
+          <div class="setting-row">
+            <div class="setting-label-group">
+              <span class="setting-label">Avatar URL</span>
+              <span class="setting-desc">Link to your profile picture</span>
+            </div>
+            <input id="settings-avatar-url" type="text" placeholder="https://..." style="width:160px" />
           </div>
-          <button id="theme-toggle" class="toggle-btn" role="switch" aria-checked="false">
-            <span class="toggle-thumb"></span>
-          </button>
+          <div class="modal-actions" style="margin-top:auto;padding-top:1rem">
+            <p class="error-msg" id="settings-save-status" style="flex:1;margin:0"></p>
+            <button id="btn-save-settings" class="btn-primary">Save changes</button>
+          </div>
         </div>
-      </div>
-      <div class="modal-actions">
-        <p class="error-msg" id="settings-save-status" style="flex:1;margin:0"></p>
-        <button id="btn-save-settings" class="btn-primary">Save changes</button>
+
+        <!-- Appearance panel -->
+        <div id="us-panel-appearance" class="us-panel hidden">
+          <h3 class="us-setting-section-title">Theme</h3>
+          <div class="theme-picker">
+            <button class="theme-swatch" data-theme="concordia">
+              <span class="theme-swatch-circle" style="background:radial-gradient(circle at 30% 30%, #6366f1, #1e1b4b)"></span>
+              <span class="theme-swatch-label">Concordia</span>
+              <span class="theme-swatch-check">&#10003;</span>
+            </button>
+            <button class="theme-swatch" data-theme="mono-dark">
+              <span class="theme-swatch-circle" style="background:radial-gradient(circle at 30% 30%, #3a3a3a, #111111)"></span>
+              <span class="theme-swatch-label">Mono Dark</span>
+              <span class="theme-swatch-check">&#10003;</span>
+            </button>
+            <button class="theme-swatch" data-theme="mono-light">
+              <span class="theme-swatch-circle" style="background:radial-gradient(circle at 30% 30%, #f0f0f0, #e0e0e0);border:2px solid #cccccc"></span>
+              <span class="theme-swatch-label">Mono Light</span>
+              <span class="theme-swatch-check">&#10003;</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- About panel -->
+        <div id="us-panel-about" class="us-panel hidden">
+          <div class="setting-row">
+            <span class="setting-label">Concordia Client</span>
+            <span class="setting-value">v1.0.0</span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Built with</span>
+            <span class="setting-value">Electron + Socket.io</span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Federation</span>
+            <span class="setting-value" id="info-federation-url"></span>
+          </div>
+          <div class="setting-row">
+            <span class="setting-label">Developer</span>
+            <span class="setting-value">Postman67</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>

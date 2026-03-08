@@ -58,8 +58,8 @@ function connectFedSocket(jwt) {
     userSettings = { ...userSettings, ...settings };
 
     if (settings.theme) {
-      applyTheme(settings.theme === 'light');
-      localStorage.setItem('theme', settings.theme);
+      applyTheme(settings.theme);
+      localStorage.setItem('theme', normalizeTheme(settings.theme));
     }
 
     // Keep avatar cache current
@@ -112,8 +112,8 @@ function connectFedSocket(jwt) {
       }
       if (user.theme) {
         userSettings = { ...userSettings, theme: user.theme };
-        applyTheme(user.theme === 'light');
-        localStorage.setItem('theme', user.theme);
+        applyTheme(user.theme);
+        localStorage.setItem('theme', normalizeTheme(user.theme));
       }
     }
     // Always re-fetch to pick up avatar_url and anything else not in the event
@@ -129,8 +129,8 @@ function connectFedSocket(jwt) {
     };
     if (meRes.user.avatar_url) avatarCache[String(meRes.user.id)] = meRes.user.avatar_url;
     if (meRes.user.theme) {
-      applyTheme(meRes.user.theme === 'light');
-      localStorage.setItem('theme', meRes.user.theme);
+      applyTheme(meRes.user.theme);
+      localStorage.setItem('theme', normalizeTheme(meRes.user.theme));
     }
     updateUserDisplay();
   });

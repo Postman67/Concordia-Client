@@ -2,31 +2,67 @@
 //  Theme
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-function applyTheme(isLight) {
-  document.body.classList.toggle('light', isLight);
-  themeToggle.setAttribute('aria-checked', isLight ? 'true' : 'false');
+function normalizeTheme(t) {
+  if (!t || t === 'dark') return 'concordia';
+  if (t === 'light')      return 'mono-light';
+  if (t === 'concordia' || t === 'mono-dark' || t === 'mono-light') return t;
+  return 'concordia';
+}
+
+function applyTheme(nameOrLegacy) {
+  const name = normalizeTheme(
+    typeof nameOrLegacy === 'boolean'
+      ? (nameOrLegacy ? 'mono-light' : 'concordia')
+      : nameOrLegacy
+  );
+  document.body.classList.remove('theme-mono-dark', 'theme-mono-light');
+  if (name === 'mono-dark')  document.body.classList.add('theme-mono-dark');
+  if (name === 'mono-light') document.body.classList.add('theme-mono-light');
+  document.querySelectorAll('.theme-swatch').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.theme === name);
+  });
+  return name;
 }
 
 // Init from localStorage until federation settings load
-applyTheme(localStorage.getItem('theme') === 'light');
+applyTheme(normalizeTheme(localStorage.getItem('theme')));
 
-themeToggle.addEventListener('click', async () => {
-  const isLight = document.body.classList.toggle('light');
-  themeToggle.setAttribute('aria-checked', isLight ? 'true' : 'false');
-  const newTheme = isLight ? 'light' : 'dark';
-  localStorage.setItem('theme', newTheme);
-  if (token) {
-    try { await fedPut('/api/settings', { theme: newTheme }); } catch (_) {}
-  }
+// Theme swatch click handlers
+document.querySelectorAll('.theme-swatch').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const applied = applyTheme(btn.dataset.theme);
+    localStorage.setItem('theme', applied);
+    if (token) {
+      try { await fedPut('/api/settings', { theme: applied }); } catch (_) {}
+    }
+  });
 });
 
-// Settings modal open/close
+// ─── Settings panel nav ───────────────────────────────────────────
+const _usNavItems   = document.querySelectorAll('.us-nav-item[data-panel]');
+const _usPanelTitle = document.getElementById('us-panel-title');
+const _panelTitles  = { profile: 'Profile', appearance: 'Themes', about: 'About' };
+
+function openSettingsPanel(panelName) {
+  _usNavItems.forEach(btn => btn.classList.toggle('active', btn.dataset.panel === panelName));
+  ['profile', 'appearance', 'about'].forEach(name => {
+    document.getElementById(`us-panel-${name}`)?.classList.toggle('hidden', name !== panelName);
+  });
+  if (_usPanelTitle) _usPanelTitle.textContent = _panelTitles[panelName] ?? panelName;
+}
+
+_usNavItems.forEach(btn => btn.addEventListener('click', () => openSettingsPanel(btn.dataset.panel)));
+
+// ─── Settings modal open / close ──────────────────────────────────
 btnSettings.addEventListener('click', () => {
   if (userSettings) {
     settingsDisplayName.value = userSettings.display_name ?? '';
     settingsAvatarUrl.value   = userSettings.avatar_url   ?? '';
   }
   settingsSaveStatus.textContent = '';
+  openSettingsPanel('profile');
+  const fedEl = document.getElementById('info-federation-url');
+  if (fedEl) fedEl.textContent = FEDERATION_URL;
   settingsOverlay.classList.remove('hidden');
 });
 btnCloseSettings.addEventListener('click', () => settingsOverlay.classList.add('hidden'));
@@ -41,7 +77,7 @@ btnSaveSettings.addEventListener('click', async () => {
   const av = settingsAvatarUrl.value.trim();
   if (dn) body.display_name = dn;
   if (av) body.avatar_url   = av;
-  body.theme = document.body.classList.contains('light') ? 'light' : 'dark';
+  body.theme = normalizeTheme(localStorage.getItem('theme'));
   try {
     const { settings } = await fedPut('/api/settings', body);
     userSettings = settings;

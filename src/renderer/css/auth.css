@@ -5,7 +5,7 @@
   justify-content: center;
   background: radial-gradient(ellipse at top, #1e1b4b 0%, #0f0d2a 65%);
 }
-body.light #auth-screen {
+body.theme-mono-light #auth-screen {
   background: linear-gradient(135deg, #e0e7ff 0%, #f3f4f6 100%);
 }
 
@@ -20,7 +20,7 @@ body.light #auth-screen {
   gap: 1.1rem;
   box-shadow: 0 8px 40px rgba(0,0,0,0.35);
 }
-body.light .auth-card {
+body.theme-mono-light .auth-card {
   box-shadow: 0 4px 24px rgba(79,70,229,0.10);
 }
 
@@ -85,7 +85,7 @@ body.light .auth-card {
   pointer-events: none;
   transition: opacity 0.5s ease;
 }
-body.light #splash-screen {
+body.theme-mono-light #splash-screen {
   background: linear-gradient(135deg, #e0e7ff 0%, #f3f4f6 100%);
 }
 #splash-screen.fade-out { opacity: 0; }

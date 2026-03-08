@@ -141,7 +141,6 @@ const addServerError    = document.getElementById('add-server-error');
 const settingsOverlay     = document.getElementById('settings-overlay');
 const btnSettings         = document.getElementById('btn-settings');
 const btnCloseSettings    = document.getElementById('btn-close-settings');
-const themeToggle         = document.getElementById('theme-toggle');
 const settingsDisplayName = document.getElementById('settings-display-name');
 const settingsAvatarUrl   = document.getElementById('settings-avatar-url');
 const btnSaveSettings     = document.getElementById('btn-save-settings');
