@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow } = require('electron');
 const path = require('path');
 
 let mainWindow;
@@ -10,7 +10,7 @@ function createWindow() {
     minWidth: 700,
     minHeight: 480,
     title: 'Concordia',
-    icon: path.join(__dirname, '..', 'branding', 'Icon - Indigo.png'),
+    icon: path.join(__dirname, '..', '..', 'branding', 'Icon - Indigo.png'),
     backgroundColor: '#1e1e2e',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -20,7 +20,7 @@ function createWindow() {
     },
   });
 
-  mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'));
+  mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
   mainWindow.setMenuBarVisibility(false);
 }
 
