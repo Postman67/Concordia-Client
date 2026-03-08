@@ -237,7 +237,9 @@ async function selectChannel(channelId) {
   });
 
   const ch = channels.find((c) => c.id === channelId);
-  channelNameLabel.textContent = ch ? ch.name : channelId;
+  const chName = ch ? ch.name : String(channelId);
+  channelNameLabel.textContent = chName;
+  messageInput.placeholder = `Message #${chName}`;
 
   noChannelPlaceholder.classList.add('hidden');
   channelView.classList.remove('hidden');
@@ -526,7 +528,10 @@ renameModalForm.addEventListener('submit', async (e) => {
       const idx = channels.findIndex(c => c.id === renameTarget.id);
       if (idx !== -1) channels[idx] = { ...channels[idx], ...updated };
       renderChannelList();
-      if (renameTarget.id === activeChannelId) channelNameLabel.textContent = newName;
+      if (renameTarget.id === activeChannelId) {
+        channelNameLabel.textContent = newName;
+        messageInput.placeholder = `Message #${newName}`;
+      }
     } else {
       await apiPatch(`/api/categories/${renameTarget.id}`, { name: newName });
       const cat = serverCategories.find(c => c.id === renameTarget.id);

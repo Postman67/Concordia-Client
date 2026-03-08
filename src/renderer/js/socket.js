@@ -60,7 +60,10 @@ function connectSocket() {
     else channels.push(ch);
     renderChannelList();
     // If the renamed/moved channel is currently open, update the header
-    if (ch.id === activeChannelId) channelNameLabel.textContent = ch.name;
+    if (ch.id === activeChannelId) {
+      channelNameLabel.textContent = ch.name;
+      messageInput.placeholder = `Message #${ch.name}`;
+    }
   });
 
   socket.on('channel:deleted', ({ id }) => {
