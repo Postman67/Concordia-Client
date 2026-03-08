@@ -295,21 +295,57 @@ messageInput.addEventListener('input', () => {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 function renderTypingBar() {
-  typingBar.innerHTML = '';
-  if (!activeChannelId) return;
+  if (!activeChannelId) { typingBar.innerHTML = ''; return; }
   const users = [...(typingUsers[activeChannelId]?.values() ?? [])];
-  if (!users.length) return;
 
-  // Pulsing dots
-  const dotsEl = document.createElement('span');
-  dotsEl.className = 'typing-dots';
-  dotsEl.appendChild(document.createElement('span'));
-  dotsEl.appendChild(document.createElement('span'));
-  dotsEl.appendChild(document.createElement('span'));
+  if (!users.length) {
+    typingBar.innerHTML = '';
+    return;
+  }
 
-  // Mini avatars (up to 3)
-  const avatarsEl = document.createElement('span');
-  avatarsEl.className = 'typing-avatars';
+  // Build the text label first so we can bail out early if nothing changed
+  let newText;
+  if (users.length === 1) {
+    newText = `${users[0].username} is typing\u2026`;
+  } else if (users.length === 2) {
+    newText = `${users[0].username} and ${users[1].username} are typing\u2026`;
+  } else {
+    newText = 'Several people are typing\u2026';
+  }
+
+  // If the bar is already showing (dots exist), only patch the dynamic parts
+  // so the CSS animation on the dots is never interrupted.
+  let dotsEl    = typingBar.querySelector('.typing-dots');
+  let avatarsEl = typingBar.querySelector('.typing-avatars');
+  let textEl    = typingBar.querySelector('.typing-label');
+
+  if (dotsEl && textEl && textEl.textContent === newText) {
+    // Nothing visible has changed — leave the DOM entirely alone
+    return;
+  }
+
+  if (!dotsEl) {
+    // First appearance — build the whole bar
+    typingBar.innerHTML = '';
+
+    dotsEl = document.createElement('span');
+    dotsEl.className = 'typing-dots';
+    dotsEl.appendChild(document.createElement('span'));
+    dotsEl.appendChild(document.createElement('span'));
+    dotsEl.appendChild(document.createElement('span'));
+    typingBar.appendChild(dotsEl);
+
+    avatarsEl = document.createElement('span');
+    avatarsEl.className = 'typing-avatars';
+    typingBar.appendChild(avatarsEl);
+
+    textEl = document.createElement('span');
+    textEl.className = 'typing-label';
+    typingBar.appendChild(textEl);
+  }
+
+  // Update avatars
+  avatarsEl.innerHTML = '';
   users.slice(0, 3).forEach(u => {
     const wrap = document.createElement('span');
     wrap.className = 'typing-avatar';
@@ -326,19 +362,8 @@ function renderTypingBar() {
     avatarsEl.appendChild(wrap);
   });
 
-  // Text label
-  const textEl = document.createElement('span');
-  if (users.length === 1) {
-    textEl.textContent = `${users[0].username} is typing\u2026`;
-  } else if (users.length === 2) {
-    textEl.textContent = `${users[0].username} and ${users[1].username} are typing\u2026`;
-  } else {
-    textEl.textContent = 'Several people are typing\u2026';
-  }
-
-  typingBar.appendChild(dotsEl);
-  typingBar.appendChild(avatarsEl);
-  typingBar.appendChild(textEl);
+  // Update text
+  textEl.textContent = newText;
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
