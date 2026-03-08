@@ -508,7 +508,7 @@
 }
 #message-input:focus { border: none; box-shadow: none; }
 
-.send-btn { flex-shrink: 0; }
+
 
 @keyframes pop-in {
   from { opacity: 0; transform: scale(0.88) translateY(4px); }
