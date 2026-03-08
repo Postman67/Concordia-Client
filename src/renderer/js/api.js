@@ -20,7 +20,7 @@ async function fedGet(path) {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
-    if (res.status === 401) { btnLogout.click(); return null; }
+    if (res.status === 401) { handleSessionExpired(); return null; }
     throw new Error(`HTTP ${res.status}`);
   }
   return res.json();
@@ -77,7 +77,10 @@ async function apiPost(path, body) {
     body: JSON.stringify(body),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message ?? data.error ?? 'Request failed');
+  if (!res.ok) {
+    if (res.status === 401) { handleSessionExpired(); throw new Error('Session expired'); }
+    throw new Error(data.message ?? data.error ?? 'Request failed');
+  }
   return data;
 }
 
@@ -86,6 +89,7 @@ async function apiGet(path) {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
+    if (res.status === 401) { handleSessionExpired(); throw new Error('Session expired'); }
     const data = await res.json().catch(() => ({}));
     throw new Error(data.message ?? data.error ?? `HTTP ${res.status}`);
   }
@@ -98,6 +102,7 @@ async function apiDelete(path) {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {
+    if (res.status === 401) { handleSessionExpired(); throw new Error('Session expired'); }
     const data = await res.json().catch(() => ({}));
     throw new Error(data.message ?? `HTTP ${res.status}`);
   }
@@ -113,7 +118,10 @@ async function apiPatch(path, body) {
     body: JSON.stringify(body),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message ?? data.error ?? 'Request failed');
+  if (!res.ok) {
+    if (res.status === 401) { handleSessionExpired(); throw new Error('Session expired'); }
+    throw new Error(data.message ?? data.error ?? 'Request failed');
+  }
   return data;
 }
 
@@ -127,7 +135,10 @@ async function apiPut(path, body) {
     body: JSON.stringify(body),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.message ?? data.error ?? 'Request failed');
+  if (!res.ok) {
+    if (res.status === 401) { handleSessionExpired(); throw new Error('Session expired'); }
+    throw new Error(data.message ?? data.error ?? 'Request failed');
+  }
   return data;
 }
 

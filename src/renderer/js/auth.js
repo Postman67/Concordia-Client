@@ -143,6 +143,20 @@ function updateUserDisplay() {
 //  Logout
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
+// Called when the federation or a chat server rejects our token with 401.
+// Tears down the session immediately and shows a message on the login screen.
+let _sessionExpiredPending = false;
+function handleSessionExpired() {
+  if (_sessionExpiredPending) return;
+  _sessionExpiredPending = true;
+  btnLogout.click();
+  // After logout the auth screen is shown; leave a visible message for the user.
+  requestAnimationFrame(() => {
+    loginError.textContent = 'Your session has expired. Please log in again.';
+    _sessionExpiredPending = false;
+  });
+}
+
 btnLogout.addEventListener('click', () => {
   localStorage.removeItem('auth_token');
   localStorage.removeItem('auth_user');

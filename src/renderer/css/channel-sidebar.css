@@ -381,6 +381,7 @@
   transition: background 0.12s, color 0.12s;
 }
 .msg-action-btn:hover { background: var(--surface2); color: var(--text); }
+.msg-action-delete { color: var(--red); }
 .msg-action-delete:hover { background: var(--red); color: #fff; }
 
 .message-edited-tag {

@@ -155,7 +155,7 @@ function buildMsgRow(msg, authorId) {
         const editBtn = document.createElement('button');
         editBtn.className = 'msg-action-btn';
         editBtn.title = 'Edit';
-        editBtn.textContent = '\u270F\uFE0F';
+        editBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" width="13" height="13"><path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61a.75.75 0 0 1-.35.195l-3.25.75a.75.75 0 0 1-.907-.907l.75-3.25a.75.75 0 0 1 .195-.35l8.612-8.608Zm1.414 1.06a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354l-1.086-1.086ZM11.189 6.25 9.75 4.81 3.25 11.311l-.518 2.248 2.25-.518 6.207-6.791Z"/></svg>';
         editBtn.addEventListener('click', () => startMsgEdit(row, msgId));
         actions.appendChild(editBtn);
       }
@@ -164,7 +164,7 @@ function buildMsgRow(msg, authorId) {
         const delBtn = document.createElement('button');
         delBtn.className = 'msg-action-btn msg-action-delete';
         delBtn.title = 'Delete';
-        delBtn.textContent = '\uD83D\uDDD1\uFE0F';
+        delBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" width="13" height="13"><path d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM6.5 1.75V3h3V1.75a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25ZM4.997 6.5a.75.75 0 0 0-1.5.077l.418 6.323A1.75 1.75 0 0 0 5.666 14.5h4.668a1.75 1.75 0 0 0 1.75-1.6l.418-6.323a.75.75 0 0 0-1.498-.077l-.419 6.323a.25.25 0 0 1-.25.177H5.666a.25.25 0 0 1-.25-.177L4.997 6.5Z"/></svg>';
         delBtn.addEventListener('click', () => deleteMsgById(msgId));
         actions.appendChild(delBtn);
       }
@@ -196,7 +196,7 @@ function startMsgEdit(row, msgId) {
 
   const hint = document.createElement('span');
   hint.className = 'msg-edit-hint';
-  hint.textContent = '\u23CE save \u00B7 Esc to cancel';
+  hint.textContent = 'Enter to save \u00B7 Esc to cancel';
   row.appendChild(hint);
 
   input.addEventListener('keydown', async (e) => {
@@ -260,42 +260,7 @@ async function deleteMsgById(msgId) {
   } catch (err) {
     console.error('[delete msg] failed:', err.message);
   }
-} â€” shows PFP if available, falls back to initials
-  const avatarEl = document.createElement('div');
-  avatarEl.className = 'avatar';
-  if (avatarUrl) {
-    const img = document.createElement('img');
-    img.src = avatarUrl;
-    img.alt = initials;
-    img.style.cssText = 'width:100%;height:100%;object-fit:cover';
-    img.addEventListener('error', () => {
-      img.remove();
-      avatarEl.style.background = avatarColor;
-      avatarEl.textContent = initials;
-    });
-    avatarEl.appendChild(img);
-  } else {
-    avatarEl.style.background = avatarColor;
-    avatarEl.textContent = initials;
-  }
-
-  const bodyEl = document.createElement('div');
-  bodyEl.className = 'message-body';
-  bodyEl.innerHTML = `
-    <div class="message-meta">
-      <span class="message-author">${escapeHtml(username)}</span>
-      <span class="message-time">${time}</span>
-    </div>
-    <div class="message-content">${escapeHtml(msg.content)}</div>
-  `;
-
-  el.appendChild(avatarEl);
-  el.appendChild(bodyEl);
-  messagesContainer.appendChild(el);
-
-  if (doScroll) scrollToBottom();
 }
-
 function scrollToBottom() {
   const list = document.getElementById('message-list');
   list.scrollTop = list.scrollHeight;
