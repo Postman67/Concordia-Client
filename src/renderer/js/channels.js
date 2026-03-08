@@ -579,7 +579,6 @@ function showChContextMenu(x, y, ch, categoryId) {
   const canManage = hasPerm('MANAGE_CHANNELS');
   const isAdmin   = currentUserRole === 'admin';
   ctxChEdit.style.display    = canManage ? '' : 'none';
-  ctxChRename.style.display  = canManage ? '' : 'none';
   ctxChDelete.style.display  = isAdmin   ? '' : 'none';
   ctxChDivider.style.display = isAdmin   ? '' : 'none';
   positionAndShowMenu(chContextMenu, x, y);
@@ -598,7 +597,6 @@ function showCatContextMenu(x, y, group) {
   const isAdmin      = currentUserRole === 'admin';
   ctxCatCreateChannel.style.display = canManageCh  ? '' : 'none';
   ctxCatEdit.style.display          = canManageCat ? '' : 'none';
-  ctxCatRename.style.display        = canManageCat ? '' : 'none';
   ctxCatDelete.style.display        = isAdmin      ? '' : 'none';
   ctxCatDivider.style.display       = isAdmin      ? '' : 'none';
   positionAndShowMenu(catContextMenu, x, y);
@@ -624,12 +622,6 @@ ctxChEdit.addEventListener('click', () => {
   if (!t) return;
   const ch = channels.find(c => c.id === t.id) ?? t;
   openEditChannelModal(ch);
-});
-
-ctxChRename.addEventListener('click', () => {
-  const t = chContextTarget;
-  hideChContextMenu();
-  if (t) openRenameModal('channel', t.id, t.name);
 });
 
 ctxChDelete.addEventListener('click', () => {
@@ -666,12 +658,6 @@ ctxCatEdit.addEventListener('click', () => {
   const t = catContextTarget;
   hideCatContextMenu();
   if (t) openEditCatModal(t);
-});
-
-ctxCatRename.addEventListener('click', () => {
-  const t = catContextTarget;
-  hideCatContextMenu();
-  if (t) openRenameModal('category', t.id, t.name);
 });
 
 ctxCatDelete.addEventListener('click', () => {
