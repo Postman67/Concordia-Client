@@ -1,0 +1,126 @@
+﻿/* â”€â”€â”€ Server sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+#server-sidebar {
+  width: 72px;
+  flex-shrink: 0;
+  background: var(--server-sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 8px;
+}
+
+#server-list-icons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  width: 100%;
+  padding: 0 0 8px;
+  scrollbar-width: none;
+}
+#server-list-icons::-webkit-scrollbar { display: none; }
+
+.server-icon-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 56px;
+  flex-shrink: 0;
+}
+
+/* Pill indicator on the left edge */
+.server-icon-wrap::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  background: var(--pill-color);
+  border-radius: 0 4px 4px 0;
+  transition: height 0.15s ease, opacity 0.15s ease;
+  height: 0;
+  opacity: 0;
+}
+.server-icon-wrap:hover::before   { height: 20px; opacity: 1; }
+.server-icon-wrap.active::before  { height: 40px; opacity: 1; }
+
+.server-icon-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--surface0);
+  border: none;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-radius 0.2s ease, background 0.15s ease, color 0.15s ease;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+.server-icon-btn:hover {
+  border-radius: 30%;
+  background: var(--primary);
+  color: #fff;
+}
+.server-icon-btn.active {
+  border-radius: 30%;
+  background: var(--primary);
+  color: #fff;
+}
+.server-icon-btn img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+.server-list-divider {
+  width: 32px;
+  height: 2px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 1px;
+  margin: 4px 0;
+  flex-shrink: 0;
+}
+body.light .server-list-divider { background: rgba(0,0,0,0.1); }
+
+/* â”€â”€â”€ Server drag-to-reorder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.server-icon-wrap.dragging { opacity: 0.3; }
+
+.drag-drop-line {
+  width: 40px;
+  height: 3px;
+  background: var(--primary);
+  border-radius: 2px;
+  margin: 0 auto;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.add-server-btn {
+  background: var(--surface0);
+  color: var(--primary-text);
+  font-size: 1.5rem;
+  font-weight: 300;
+  line-height: 1;
+}
+.add-server-btn:hover {
+  background: var(--primary);
+  color: #fff;
+  border-radius: 30%;
+}
+

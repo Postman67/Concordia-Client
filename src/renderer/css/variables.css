@@ -1,0 +1,62 @@
+﻿/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   Concordia â€“ Renderer Styles
+   Brand: Indigo / Montserrat  (see branding/branding.md)
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* â”€â”€â”€ Dark theme (default) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+:root {
+  --bg:                #0f0d2a;
+  --surface0:          #1e1b4b;   /* Indigo 900 */
+  --surface1:          #2e2a6a;
+  --surface2:          #3730a3;   /* Indigo 700 */
+  --overlay0:          #4f46e5;   /* Indigo 600 */
+  --text:              #e0e7ff;   /* Indigo 100 */
+  --subtext0:          #a5b4fc;   /* Indigo 300 */
+  --subtext1:          #c7d2fe;   /* Indigo 200 */
+  --primary:           #4f46e5;   /* Indigo 600 */
+  --primary-hover:     #4338ca;   /* Indigo 700 */
+  --primary-text:      #818cf8;   /* Indigo 400 */
+  --red:               #f87171;
+  --radius:            8px;
+  --sidebar-w:         230px;
+  --msg-hover:         rgba(255,255,255,0.04);
+  --logo-filter:       brightness(0) invert(1);
+  --server-sidebar-bg: #09081a;
+  --pill-color:        #ffffff;
+}
+
+/* â”€â”€â”€ Light theme â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+body.light {
+  --bg:                #ffffff;
+  --surface0:          #f3f4f6;   /* Gray 100 */
+  --surface1:          #e5e7eb;   /* Gray 200 */
+  --surface2:          #d1d5db;   /* Gray 300 */
+  --overlay0:          #9ca3af;   /* Gray 400 */
+  --text:              #111827;   /* Gray 900 */
+  --subtext0:          #6b7280;   /* Gray 500 */
+  --subtext1:          #374151;   /* Gray 700 */
+  --primary:           #4f46e5;
+  --primary-hover:     #4338ca;
+  --primary-text:      #4f46e5;
+  --red:               #ef4444;
+  --msg-hover:         rgba(0,0,0,0.04);
+  --logo-filter:       none;
+  --server-sidebar-bg: #e0e7ff;
+  --pill-color:        #4f46e5;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Montserrat', 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  overflow: hidden;
+}
+
+/* â”€â”€â”€ Utilities â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.hidden { display: none !important; }
+.screen { width: 100vw; height: 100vh; }
+

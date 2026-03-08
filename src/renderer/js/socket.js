@@ -1,0 +1,142 @@
+﻿//  Socket.IO
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
+function connectSocket() {
+  if (!activeServerUrl) return;
+  socket = window.concordia.createSocket(activeServerUrl, token);
+
+  socket.on('connect', () => {
+    console.log('[socket] connected to', activeServerUrl);
+    if (activeChannelId) socket.emit('channel:join', activeChannelId);
+  });
+
+  socket.on('connect_error', (err) => {
+    console.error('[socket] connection error:', err.message);
+    showServerError('Unable to connect to server');
+  });
+
+  socket.on('message:new', (msg) => {
+    if (!messages[msg.channelId]) messages[msg.channelId] = [];
+    messages[msg.channelId].push(msg);
+    if (msg.channelId === activeChannelId) {
+      appendMessage(msg);
+      scrollToBottom();
+    }
+  });
+
+  socket.on('typing:update', ({ channelId, user, isTyping }) => {
+    if (String(user.id) === String(currentUser.id)) return; // ignore self
+    if (!typingUsers[channelId]) typingUsers[channelId] = new Set();
+    if (isTyping) {
+      typingUsers[channelId].add(user.username);
+    } else {
+      typingUsers[channelId].delete(user.username);
+    }
+    if (channelId === activeChannelId) renderTypingBar();
+  });
+
+  socket.on('error', ({ message }) => {
+    console.warn('[socket] server error:', message);
+  });
+
+  // â”€â”€ Server-push: server info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  socket.on('server:updated', ({ name, description }) => {
+    if (name != null) serverNameLabel.textContent = name;
+    // description is shown in the info overlay but doesn't need a live DOM update
+  });
+
+  // â”€â”€ Server-push: channels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  socket.on('channel:created', (ch) => {
+    // Guard against double-add when the creator already pushed the channel locally
+    if (!channels.find((c) => c.id === ch.id)) {
+      channels.push(ch);
+      renderChannelList();
+    }
+  });
+
+  socket.on('channel:updated', (ch) => {
+    const idx = channels.findIndex((c) => c.id === ch.id);
+    if (idx !== -1) channels[idx] = ch;
+    else channels.push(ch);
+    renderChannelList();
+    // If the renamed/moved channel is currently open, update the header
+    if (ch.id === activeChannelId) channelNameLabel.textContent = ch.name;
+  });
+
+  socket.on('channel:deleted', ({ id }) => {
+    const existed = channels.some((c) => c.id === id);
+    channels = channels.filter((c) => c.id !== id);
+    if (!existed) return; // already removed locally by the deleter
+    if (id === activeChannelId) {
+      // Active channel was deleted â€” move to first remaining channel
+      activeChannelId = null;
+      delete messages[id];
+      renderChannelList();
+      const next = channels[0];
+      if (next) selectChannel(next.id);
+      else {
+        channelView.classList.add('hidden');
+        noChannelPlaceholder.classList.remove('hidden');
+      }
+    } else {
+      renderChannelList();
+    }
+  });
+
+  socket.on('channels:reordered', (updated) => {
+    channels = updated;
+    renderChannelList();
+  });
+
+  // â”€â”€ Server-push: categories â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  socket.on('category:created', (cat) => {
+    if (!serverCategories.find(c => c.id === cat.id)) {
+      serverCategories.push(cat);
+      renderChannelList();
+    }
+  });
+
+  socket.on('category:updated', ({ id, name, position }) => {
+    const cat = serverCategories.find(c => c.id === id);
+    if (cat) { if (name != null) cat.name = name; if (position != null) cat.position = position; }
+    channels = channels.map((c) => {
+      if (c.category_id !== id) return c;
+      return { ...c, category_name: name ?? c.category_name, category_position: position ?? c.category_position };
+    });
+    renderChannelList();
+  });
+
+  socket.on('category:deleted', ({ id }) => {
+    serverCategories = serverCategories.filter(c => c.id !== id);
+    channels = channels.map((c) => {
+      if (c.category_id !== id) return c;
+      return { ...c, category_id: null, category_name: null, category_position: null };
+    });
+    renderChannelList();
+  });
+
+  socket.on('categories:reordered', (cats) => {
+    serverCategories = cats;
+    const posMap = new Map(cats.map((cat) => [cat.id, cat.position]));
+    channels = channels.map((c) => {
+      const newPos = posMap.get(c.category_id);
+      return newPos != null ? { ...c, category_position: newPos } : c;
+    });
+    renderChannelList();
+  });
+
+  // â”€â”€ Server-push: members â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  socket.on('member:role_updated', ({ user_id, role }) => {
+    if (String(user_id) === String(currentUser.id)) {
+      currentUserRole = role;
+      // Refresh gated UI elements
+      ctxServerSettings.style.display  = role === 'admin' ? '' : 'none';
+      renderChannelList(); // admin drag-handles shown/hidden by role
+    }
+    // Update local members list and re-render pane regardless of whose role changed
+    const m = serverMembers.find(m => String(m.user_id) === String(user_id));
+    if (m) { m.role = role; renderMembersPane(); }
+  });
+}
+
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
