@@ -24,6 +24,7 @@ let typingTimer    = null;
 let lastMsgMeta    = null;    // { userId, timestamp } â€” message grouping
 let avatarCache    = {};      // userId â†’ avatarUrl
 let currentUserRole = 'member'; // 'member' | 'moderator' | 'admin'
+let myPermissions  = null;     // { bits, resolved: { MANAGE_CHANNELS, MANAGE_CATEGORIES, … } }
 let dragSrcId      = null;       // federation server id being dragged
 let dragOverTarget = null;       // { id: serverId|null, insertBefore: bool }
 let chDragSrcId    = null;       // channel id being dragged
@@ -85,10 +86,14 @@ const membersPane        = document.getElementById('members-pane');
 const membersPaneList    = document.getElementById('members-pane-list');
 const chContextMenu      = document.getElementById('ch-context-menu');
 const catContextMenu     = document.getElementById('cat-context-menu');
+const ctxChEdit          = document.getElementById('ctx-ch-edit');
 const ctxChRename        = document.getElementById('ctx-ch-rename');
 const ctxChDelete        = document.getElementById('ctx-ch-delete');
+const ctxChDivider       = document.getElementById('ctx-ch-divider');
+const ctxCatEdit         = document.getElementById('ctx-cat-edit');
 const ctxCatRename       = document.getElementById('ctx-cat-rename');
 const ctxCatDelete       = document.getElementById('ctx-cat-delete');
+const ctxCatDivider      = document.getElementById('ctx-cat-divider');
 const renameModalOverlay = document.getElementById('rename-modal-overlay');
 const renameModalTitle   = document.getElementById('rename-modal-title');
 const renameModalInput   = document.getElementById('rename-modal-input');
@@ -162,4 +167,19 @@ const ssMembersStatus       = document.getElementById('ss-members-status');
 const statusContextMenu      = document.getElementById('status-context-menu');
 const currentUserStatusBadge = document.getElementById('current-user-status-badge');
 const sidebarUser            = document.getElementById('sidebar-user');
+
+// Edit Channel modal
+const editChannelOverlay    = document.getElementById('edit-channel-overlay');
+const editChannelForm       = document.getElementById('edit-channel-form');
+const editChannelNameInput  = document.getElementById('edit-channel-name');
+const editChannelDescInput  = document.getElementById('edit-channel-desc');
+const btnCancelEditChannel  = document.getElementById('btn-cancel-edit-channel');
+const editChannelError      = document.getElementById('edit-channel-error');
+
+// Edit Category modal
+const editCatOverlay        = document.getElementById('edit-cat-overlay');
+const editCatForm           = document.getElementById('edit-cat-form');
+const editCatNameInput      = document.getElementById('edit-cat-name');
+const btnCancelEditCat      = document.getElementById('btn-cancel-edit-cat');
+const editCatError          = document.getElementById('edit-cat-error');
 

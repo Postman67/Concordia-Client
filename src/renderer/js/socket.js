@@ -140,6 +140,21 @@ function connectSocket() {
     const m = serverMembers.find(m => String(m.user_id) === String(user_id));
     if (m) { m.role = role; renderMembersPane(); }
   });
+
+  // Granular permissions: re-fetch resolved bits when roles or overrides change
+  socket.on('member:roles_updated', ({ user_id }) => {
+    if (String(user_id) === String(currentUser.id)) {
+      fetchMyPermissions().then(() => renderChannelList());
+    }
+  });
+
+  socket.on('channel:overrides_updated', () => {
+    fetchMyPermissions().then(() => renderChannelList());
+  });
+
+  socket.on('category:overrides_updated', () => {
+    fetchMyPermissions().then(() => renderChannelList());
+  });
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•

@@ -1,12 +1,30 @@
 ﻿//  Channels
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
+// --- Permission helpers -------------------------------------------------
+function hasPerm(key) {
+  if (currentUserRole === 'admin') return true;
+  return myPermissions?.resolved?.[key] === true;
+}
+
+async function fetchMyPermissions() {
+  try {
+    myPermissions = await apiGet('/api/roles/@me/permissions');
+  } catch (_) {
+    myPermissions = null;
+  }
+}
+
 async function loadChannels(restoreChannelId = null) {
   try {
-    [channels, serverCategories] = await Promise.all([
+    const [ch, cats, perms] = await Promise.all([
       apiGet('/api/channels'),
       apiGet('/api/categories').catch(() => []),
+      apiGet('/api/roles/@me/permissions').catch(() => null),
     ]);
+    channels         = ch;
+    serverCategories = cats;
+    myPermissions    = perms;
     renderChannelList();
     // Restore last channel if valid, otherwise fall back to first channel
     const target = (restoreChannelId && channels.find(c => c.id === restoreChannelId))
@@ -68,7 +86,7 @@ function renderChannelList() {
       labelText.className = 'channel-section-label-text';
       labelText.textContent = group.label;
       label.appendChild(labelText);
-      if (currentUserRole === 'moderator' || currentUserRole === 'admin') {
+      if (hasPerm('MANAGE_CHANNELS')) {
         const catAddBtn = document.createElement('button');
         catAddBtn.className = 'cat-add-channel-btn';
         catAddBtn.title = 'Create channel in this category';
@@ -93,8 +111,8 @@ function renderChannelList() {
         label.addEventListener('drop', (e) => { e.preventDefault(); finalizeChannelDrop(); });
       }
 
-      // Right-click: rename (mod+) / delete (admin)
-      if (group.categoryId && (currentUserRole === 'moderator' || currentUserRole === 'admin')) {
+      // Right-click: edit/rename (MANAGE_CATEGORIES) / delete (admin)
+      if (group.categoryId && (hasPerm('MANAGE_CATEGORIES') || hasPerm('MANAGE_CHANNELS'))) {
         label.addEventListener('contextmenu', (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -112,8 +130,8 @@ function renderChannelList() {
       if (ch.id === activeChannelId) li.classList.add('active');
       li.addEventListener('click', () => selectChannel(ch.id));
 
-      // Right-click: rename (mod+) / delete (admin)
-      if (currentUserRole === 'moderator' || currentUserRole === 'admin') {
+      // Right-click: edit/rename (MANAGE_CHANNELS) / delete (admin)
+      if (hasPerm('MANAGE_CHANNELS')) {
         li.addEventListener('contextmenu', (e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -317,6 +335,87 @@ createCatForm.addEventListener('submit', async (e) => {
   }
 });
 
+// --- Edit Channel modal --------------------------------------------------
+let editChannelTarget = null;
+
+function openEditChannelModal(ch) {
+  editChannelTarget = { id: ch.id };
+  editChannelNameInput.value = ch.name ?? '';
+  editChannelDescInput.value = ch.description ?? '';
+  editChannelError.textContent = '';
+  editChannelOverlay.classList.remove('hidden');
+  editChannelNameInput.focus();
+}
+
+btnCancelEditChannel.addEventListener('click', () => {
+  editChannelOverlay.classList.add('hidden');
+  editChannelTarget = null;
+});
+editChannelOverlay.addEventListener('click', (e) => {
+  if (e.target === editChannelOverlay) { editChannelOverlay.classList.add('hidden'); editChannelTarget = null; }
+});
+editChannelForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!editChannelTarget) return;
+  editChannelError.textContent = '';
+  const name        = editChannelNameInput.value.trim();
+  const description = editChannelDescInput.value.trim() || undefined;
+  if (!name) return;
+  try {
+    const updated = await apiPatch(`/api/channels/${editChannelTarget.id}`, { name, description });
+    const idx = channels.findIndex(c => c.id === editChannelTarget.id);
+    if (idx !== -1) channels[idx] = { ...channels[idx], ...updated };
+    renderChannelList();
+    if (editChannelTarget.id === activeChannelId) {
+      channelNameLabel.textContent = updated.name ?? name;
+      messageInput.placeholder = `Message #${updated.name ?? name}`;
+    }
+    editChannelOverlay.classList.add('hidden');
+    editChannelTarget = null;
+  } catch (err) {
+    editChannelError.textContent = err.message;
+  }
+});
+
+// --- Edit Category modal -------------------------------------------------
+let editCatTarget = null;
+
+function openEditCatModal(cat) {
+  editCatTarget = { id: cat.id };
+  editCatNameInput.value = cat.name ?? '';
+  editCatError.textContent = '';
+  editCatOverlay.classList.remove('hidden');
+  editCatNameInput.focus();
+}
+
+btnCancelEditCat.addEventListener('click', () => {
+  editCatOverlay.classList.add('hidden');
+  editCatTarget = null;
+});
+editCatOverlay.addEventListener('click', (e) => {
+  if (e.target === editCatOverlay) { editCatOverlay.classList.add('hidden'); editCatTarget = null; }
+});
+editCatForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!editCatTarget) return;
+  editCatError.textContent = '';
+  const name = editCatNameInput.value.trim();
+  if (!name) return;
+  try {
+    await apiPatch(`/api/categories/${editCatTarget.id}`, { name });
+    const cat = serverCategories.find(c => c.id === editCatTarget.id);
+    if (cat) cat.name = name;
+    channels = channels.map(c =>
+      c.category_id === editCatTarget.id ? { ...c, category_name: name } : c
+    );
+    renderChannelList();
+    editCatOverlay.classList.add('hidden');
+    editCatTarget = null;
+  } catch (err) {
+    editCatError.textContent = err.message;
+  }
+});
+
 // â”€â”€â”€ Members pane â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function renderMembersPane() {
   membersPaneList.innerHTML = '';
@@ -409,10 +508,13 @@ function positionAndShowMenu(menu, x, y) {
 
 function showChContextMenu(x, y, ch, categoryId) {
   hideCatContextMenu();
-  chContextTarget = { id: ch.id, name: ch.name, categoryId };
-  const isMod = currentUserRole === 'moderator' || currentUserRole === 'admin';
-  ctxChRename.style.display = isMod                     ? '' : 'none';
-  ctxChDelete.style.display = currentUserRole === 'admin' ? '' : 'none';
+  chContextTarget = { id: ch.id, name: ch.name, description: ch.description ?? '', categoryId };
+  const canManage = hasPerm('MANAGE_CHANNELS');
+  const isAdmin   = currentUserRole === 'admin';
+  ctxChEdit.style.display    = canManage ? '' : 'none';
+  ctxChRename.style.display  = canManage ? '' : 'none';
+  ctxChDelete.style.display  = isAdmin   ? '' : 'none';
+  ctxChDivider.style.display = isAdmin   ? '' : 'none';
   positionAndShowMenu(chContextMenu, x, y);
 }
 
@@ -424,10 +526,14 @@ function hideChContextMenu() {
 function showCatContextMenu(x, y, group) {
   hideChContextMenu();
   catContextTarget = { id: group.categoryId, name: group.label };
-  const isMod = currentUserRole === 'moderator' || currentUserRole === 'admin';
-  ctxCatCreateChannel.style.display = isMod                      ? '' : 'none';
-  ctxCatRename.style.display        = isMod                      ? '' : 'none';
-  ctxCatDelete.style.display        = currentUserRole === 'admin' ? '' : 'none';
+  const canManageCh  = hasPerm('MANAGE_CHANNELS');
+  const canManageCat = hasPerm('MANAGE_CATEGORIES');
+  const isAdmin      = currentUserRole === 'admin';
+  ctxCatCreateChannel.style.display = canManageCh  ? '' : 'none';
+  ctxCatEdit.style.display          = canManageCat ? '' : 'none';
+  ctxCatRename.style.display        = canManageCat ? '' : 'none';
+  ctxCatDelete.style.display        = isAdmin      ? '' : 'none';
+  ctxCatDivider.style.display       = isAdmin      ? '' : 'none';
   positionAndShowMenu(catContextMenu, x, y);
 }
 
@@ -443,6 +549,14 @@ document.addEventListener('click', (e) => {
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { hideChContextMenu(); hideCatContextMenu(); hideChlistContextMenu(); }
+});
+
+ctxChEdit.addEventListener('click', () => {
+  const t = chContextTarget;
+  hideChContextMenu();
+  if (!t) return;
+  const ch = channels.find(c => c.id === t.id) ?? t;
+  openEditChannelModal(ch);
 });
 
 ctxChRename.addEventListener('click', () => {
@@ -479,6 +593,12 @@ ctxCatCreateChannel.addEventListener('click', () => {
   const t = catContextTarget;
   hideCatContextMenu();
   if (t) openCreateChannelModal(t.id);
+});
+
+ctxCatEdit.addEventListener('click', () => {
+  const t = catContextTarget;
+  hideCatContextMenu();
+  if (t) openEditCatModal(t);
 });
 
 ctxCatRename.addEventListener('click', () => {
@@ -593,10 +713,10 @@ function hideChlistContextMenu() { chlistContextMenu.classList.add('hidden'); }
 
 channelList.addEventListener('contextmenu', (e) => {
   if (!activeServerId) return;
-  if (currentUserRole !== 'moderator' && currentUserRole !== 'admin') return;
+  if (!hasPerm('MANAGE_CHANNELS') && !hasPerm('MANAGE_CATEGORIES')) return;
   e.preventDefault();
   hideChContextMenu(); hideCatContextMenu();
-  ctxChlistCreateCategory.style.display = currentUserRole === 'admin' ? '' : 'none';
+  ctxChlistCreateCategory.style.display = hasPerm('MANAGE_CATEGORIES') ? '' : 'none';
   positionAndShowMenu(chlistContextMenu, e.clientX, e.clientY);
 });
 

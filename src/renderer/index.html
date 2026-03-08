@@ -253,15 +253,18 @@
 
   <!-- Channel context menu -->
   <div id="ch-context-menu" class="context-menu hidden">
-    <button id="ctx-ch-rename" class="context-menu-item">&#9998; &nbsp;Rename</button>
+    <button id="ctx-ch-edit"   class="context-menu-item" style="display:none">&#9881; &nbsp;Edit Channel</button>
+    <button id="ctx-ch-rename" class="context-menu-item" style="display:none">&#9998; &nbsp;Rename</button>
+    <div class="context-menu-divider" id="ctx-ch-divider" style="display:none"></div>
     <button id="ctx-ch-delete" class="context-menu-item context-menu-item--danger" style="display:none">&#128465; &nbsp;Delete</button>
   </div>
 
   <!-- Category context menu -->
   <div id="cat-context-menu" class="context-menu hidden">
-    <button id="ctx-cat-create-channel" class="context-menu-item">&#43; &nbsp;Create Channel</button>
-    <div class="context-menu-divider"></div>
-    <button id="ctx-cat-rename" class="context-menu-item">&#9998; &nbsp;Rename</button>
+    <button id="ctx-cat-create-channel" class="context-menu-item" style="display:none">&#43; &nbsp;Create Channel</button>
+    <button id="ctx-cat-edit"          class="context-menu-item" style="display:none">&#9881; &nbsp;Edit Category</button>
+    <button id="ctx-cat-rename"        class="context-menu-item" style="display:none">&#9998; &nbsp;Rename</button>
+    <div class="context-menu-divider" id="ctx-cat-divider" style="display:none"></div>
     <button id="ctx-cat-delete" class="context-menu-item context-menu-item--danger" style="display:none">&#128465; &nbsp;Delete</button>
   </div>
 
@@ -310,6 +313,44 @@
           <button type="submit" class="btn-primary">Rename</button>
         </div>
         <p class="error-msg" id="rename-modal-error"></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Channel modal -->
+  <div id="edit-channel-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Edit Channel</h2>
+      </div>
+      <form id="edit-channel-form">
+        <label class="modal-label" for="edit-channel-name">Name</label>
+        <input id="edit-channel-name" type="text" maxlength="64" required />
+        <label class="modal-label" for="edit-channel-desc">Description</label>
+        <input id="edit-channel-desc" type="text" maxlength="255" placeholder="Optional" />
+        <div class="modal-actions">
+          <button type="button" id="btn-cancel-edit-channel" class="btn-secondary">Cancel</button>
+          <button type="submit" class="btn-primary">Save</button>
+        </div>
+        <p class="error-msg" id="edit-channel-error"></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Category modal -->
+  <div id="edit-cat-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>Edit Category</h2>
+      </div>
+      <form id="edit-cat-form">
+        <label class="modal-label" for="edit-cat-name">Name</label>
+        <input id="edit-cat-name" type="text" maxlength="64" required />
+        <div class="modal-actions">
+          <button type="button" id="btn-cancel-edit-cat" class="btn-secondary">Cancel</button>
+          <button type="submit" class="btn-primary">Save</button>
+        </div>
+        <p class="error-msg" id="edit-cat-error"></p>
       </form>
     </div>
   </div>

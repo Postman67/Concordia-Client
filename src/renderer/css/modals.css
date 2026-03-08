@@ -41,6 +41,15 @@
   justify-content: flex-end;
 }
 
+.modal-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--subtext0);
+  margin-bottom: -0.25rem;
+}
+
 /* â”€â”€â”€ Settings modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .settings-modal { width: 420px; }
 
