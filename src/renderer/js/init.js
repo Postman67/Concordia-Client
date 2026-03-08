@@ -22,4 +22,22 @@
   splash.addEventListener('transitionend', () => splash.remove(), { once: true });
 })();
 
+// Restrict Ctrl/Cmd+A (select all): editable fields use default behaviour;
+// anywhere else, select all text in the current message list instead.
+document.addEventListener('keydown', (e) => {
+  const isSelectAll = (e.ctrlKey || e.metaKey) && e.key === 'a';
+  if (!isSelectAll) return;
+  const tag = document.activeElement?.tagName;
+  const isEditable = tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable;
+  if (isEditable) return; // let the browser handle it normally
+  e.preventDefault();
+  const list = document.getElementById('message-list');
+  if (!list) return;
+  const sel = window.getSelection();
+  const range = document.createRange();
+  range.selectNodeContents(list);
+  sel.removeAllRanges();
+  sel.addRange(range);
+}, true);
+
 // Deterministic colour from username string (for avatar backgrounds)
