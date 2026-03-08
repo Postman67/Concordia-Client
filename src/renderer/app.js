@@ -863,6 +863,93 @@ function connectSocket() {
   socket.on('error', ({ message }) => {
     console.warn('[socket] server error:', message);
   });
+
+  // ── Server-push: server info ───────────────────────────────
+  socket.on('server:updated', ({ name, description }) => {
+    if (name != null) serverNameLabel.textContent = name;
+    // description is shown in the info overlay but doesn't need a live DOM update
+  });
+
+  // ── Server-push: channels ──────────────────────────────────
+  socket.on('channel:created', (ch) => {
+    channels.push(ch);
+    renderChannelList();
+  });
+
+  socket.on('channel:updated', (ch) => {
+    const idx = channels.findIndex((c) => c.id === ch.id);
+    if (idx !== -1) channels[idx] = ch;
+    else channels.push(ch);
+    renderChannelList();
+    // If the renamed/moved channel is currently open, update the header
+    if (ch.id === activeChannelId) channelNameLabel.textContent = ch.name;
+  });
+
+  socket.on('channel:deleted', ({ id }) => {
+    channels = channels.filter((c) => c.id !== id);
+    if (id === activeChannelId) {
+      // Active channel was deleted — move to first remaining channel
+      activeChannelId = null;
+      delete messages[id];
+      renderChannelList();
+      const next = channels[0];
+      if (next) selectChannel(next.id);
+      else {
+        channelView.classList.add('hidden');
+        noChannelPlaceholder.classList.remove('hidden');
+      }
+    } else {
+      renderChannelList();
+    }
+  });
+
+  socket.on('channels:reordered', (updated) => {
+    channels = updated;
+    renderChannelList();
+  });
+
+  // ── Server-push: categories ────────────────────────────────
+  socket.on('category:created', () => {
+    // New empty category has no channels yet; re-render once channels arrive via channel:created
+  });
+
+  socket.on('category:updated', ({ id, name, position }) => {
+    channels = channels.map((c) => {
+      if (c.category_id !== id) return c;
+      return { ...c, category_name: name ?? c.category_name, category_position: position ?? c.category_position };
+    });
+    renderChannelList();
+  });
+
+  socket.on('category:deleted', ({ id }) => {
+    channels = channels.map((c) => {
+      if (c.category_id !== id) return c;
+      return { ...c, category_id: null, category_name: null, category_position: null };
+    });
+    renderChannelList();
+  });
+
+  socket.on('categories:reordered', (cats) => {
+    // cats is the full updated category list; patch category_position on matching channels
+    const posMap = new Map(cats.map((cat) => [cat.id, cat.position]));
+    channels = channels.map((c) => {
+      const newPos = posMap.get(c.category_id);
+      return newPos != null ? { ...c, category_position: newPos } : c;
+    });
+    renderChannelList();
+  });
+
+  // ── Server-push: members ───────────────────────────────────
+  socket.on('member:role_updated', ({ user_id, role }) => {
+    if (String(user_id) === String(currentUser.id)) {
+      currentUserRole = role;
+      // Refresh gated UI elements
+      btnNewChannel.style.display      = (role === 'admin' || role === 'moderator') ? '' : 'none';
+      ctxServerSettings.style.display  = role === 'admin' ? '' : 'none';
+      btnDeleteChannel.style.display   = role === 'admin' ? '' : 'none';
+      renderChannelList(); // admin drag-handles shown/hidden by role
+    }
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
