@@ -151,14 +151,14 @@ body.theme-mono-light .server-list-divider { background: rgba(0,0,0,0.1); }
   font-weight: 700;
   color: var(--text);
   margin-bottom: 8px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
 }
 .server-tooltip-counts {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
 }
 .server-tooltip-count {
   display: flex;
