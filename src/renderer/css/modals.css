@@ -795,16 +795,6 @@
 }
 .ss-textarea:focus { outline: none; border-color: var(--primary); }
 
-/* ─── Server header icon (sidebar channel-list button) ─────────── */
-.server-header-icon {
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  object-fit: cover;
-  flex-shrink: 0;
-  margin-right: 0.4rem;
-}
-
 /* ─── CDN / Media panel ─────────────────────────────────────────── */
 .ss-icon-upload-row {
   display: flex;

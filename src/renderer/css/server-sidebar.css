@@ -54,7 +54,7 @@
 .server-icon-btn {
   width: 48px;
   height: 48px;
-  border-radius: 50%;
+  border-radius: 30%;
   background: var(--surface0);
   border: none;
   color: var(--text);

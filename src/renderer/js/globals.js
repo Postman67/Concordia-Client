@@ -77,7 +77,6 @@ const btnConfirmLeaveServer= document.getElementById('btn-confirm-leave-server')
 // Channel sidebar
 const serverNameLabel  = document.getElementById('server-name-label');
 const btnServerName    = document.getElementById('btn-server-name');
-const serverHeaderIcon = document.getElementById('server-header-icon');
 const channelList      = document.getElementById('channel-list');
 const currentUserLabel = document.getElementById('current-user-label');
 const currentUserAvatar= document.getElementById('current-user-avatar');

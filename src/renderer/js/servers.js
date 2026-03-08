@@ -14,11 +14,17 @@ function renderServerSidebar() {
     btn.className = 'server-icon-btn';
     btn.draggable = false;
     if (srv.id === activeServerId) btn.classList.add('active');
-    const label = (srv.server_name || srv.server_address).slice(0, 2).toUpperCase();
-    btn.textContent = label;
     btn.title = srv.server_name || srv.server_address;
     btn.setAttribute('aria-label', srv.server_name || srv.server_address);
-    btn.style.background = srv.id === activeServerId ? '' : stringToColor(srv.server_name || srv.server_address);
+    if (srv.icon_url) {
+      const img = document.createElement('img');
+      img.src = srv.icon_url;
+      img.alt = '';
+      btn.appendChild(img);
+    } else {
+      btn.textContent = (srv.server_name || srv.server_address).slice(0, 2).toUpperCase();
+      btn.style.background = srv.id === activeServerId ? '' : stringToColor(srv.server_name || srv.server_address);
+    }
     btn.addEventListener('click', () => selectServer(srv.id));
 
     // Right-click context menu
@@ -469,15 +475,30 @@ function buildServerUrl(address) {
 }
 
 function updateServerHeaderIcon(iconUrl) {
-  if (!serverHeaderIcon) return;
-  if (iconUrl) {
-    // icon_url is root-relative — prepend the active server origin
-    const src = /^https?:\/\//.test(iconUrl) ? iconUrl : `${activeServerUrl}${iconUrl}`;
-    serverHeaderIcon.src = src;
-    serverHeaderIcon.style.display = '';
+  // Resolve to full URL and cache on the server object
+  const srv = userServers.find(s => s.id === activeServerId);
+  const fullUrl = iconUrl
+    ? (/^https?:\/\//.test(iconUrl) ? iconUrl : `${activeServerUrl}${iconUrl}`)
+    : null;
+  if (srv) srv.icon_url = fullUrl;
+
+  // Update the DOM button in the server list
+  const wrap = serverListIcons.querySelector(`.server-icon-wrap[data-id="${activeServerId}"]`);
+  if (!wrap) return;
+  const btn = wrap.querySelector('.server-icon-btn');
+  if (!btn) return;
+
+  if (fullUrl) {
+    btn.textContent = '';
+    let img = btn.querySelector('img');
+    if (!img) { img = document.createElement('img'); img.alt = ''; btn.appendChild(img); }
+    img.src = fullUrl;
+    btn.style.background = '';
   } else {
-    serverHeaderIcon.style.display = 'none';
-    serverHeaderIcon.src = '';
+    btn.querySelector('img')?.remove();
+    const label = (srv?.server_name || srv?.server_address || '').slice(0, 2).toUpperCase();
+    btn.textContent = label;
+    btn.style.background = stringToColor(srv?.server_name || srv?.server_address || '');
   }
 }
 
