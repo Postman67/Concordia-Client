@@ -337,6 +337,60 @@
   color: var(--subtext0);
   font-weight: bold;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-right: 7px;
+  flex-shrink: 0;
+}
+.typing-dots span {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--subtext0);
+  animation: typing-pulse 1.2s infinite ease-in-out;
+}
+.typing-dots span:nth-child(1) { animation-delay: 0s; }
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing-pulse {
+  0%, 60%, 100% { transform: translateY(0);    opacity: 0.35; }
+  30%            { transform: translateY(-4px); opacity: 1;    }
+}
+
+.typing-avatars {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+.typing-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 0.48rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  overflow: hidden;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+.typing-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 /* Message input */

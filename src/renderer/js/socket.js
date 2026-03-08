@@ -26,11 +26,11 @@ function connectSocket() {
 
   socket.on('typing:update', ({ channelId, user, isTyping }) => {
     if (String(user.id) === String(currentUser.id)) return; // ignore self
-    if (!typingUsers[channelId]) typingUsers[channelId] = new Set();
+    if (!typingUsers[channelId]) typingUsers[channelId] = new Map();
     if (isTyping) {
-      typingUsers[channelId].add(user.username);
+      typingUsers[channelId].set(String(user.id), user);
     } else {
-      typingUsers[channelId].delete(user.username);
+      typingUsers[channelId].delete(String(user.id));
     }
     if (channelId === activeChannelId) renderTypingBar();
   });

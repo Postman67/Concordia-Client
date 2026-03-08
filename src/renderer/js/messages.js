@@ -156,17 +156,50 @@ messageInput.addEventListener('input', () => {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 function renderTypingBar() {
-  if (!activeChannelId) { typingBar.textContent = ''; return; }
-  const users = [...(typingUsers[activeChannelId] ?? [])];
-  if (users.length === 0) {
-    typingBar.textContent = '';
-  } else if (users.length === 1) {
-    typingBar.textContent = `${users[0]} is typingâ€¦`;
+  typingBar.innerHTML = '';
+  if (!activeChannelId) return;
+  const users = [...(typingUsers[activeChannelId]?.values() ?? [])];
+  if (!users.length) return;
+
+  // Pulsing dots
+  const dotsEl = document.createElement('span');
+  dotsEl.className = 'typing-dots';
+  dotsEl.appendChild(document.createElement('span'));
+  dotsEl.appendChild(document.createElement('span'));
+  dotsEl.appendChild(document.createElement('span'));
+
+  // Mini avatars (up to 3)
+  const avatarsEl = document.createElement('span');
+  avatarsEl.className = 'typing-avatars';
+  users.slice(0, 3).forEach(u => {
+    const wrap = document.createElement('span');
+    wrap.className = 'typing-avatar';
+    const url = avatarCache[String(u.id)];
+    if (url) {
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = '';
+      wrap.appendChild(img);
+    } else {
+      wrap.textContent = u.username.slice(0, 2).toUpperCase();
+      wrap.style.background = stringToColor(u.username);
+    }
+    avatarsEl.appendChild(wrap);
+  });
+
+  // Text label
+  const textEl = document.createElement('span');
+  if (users.length === 1) {
+    textEl.textContent = `${users[0].username} is typing\u2026`;
   } else if (users.length === 2) {
-    typingBar.textContent = `${users[0]} and ${users[1]} are typingâ€¦`;
+    textEl.textContent = `${users[0].username} and ${users[1].username} are typing\u2026`;
   } else {
-    typingBar.textContent = 'Several people are typingâ€¦';
+    textEl.textContent = 'Several people are typing\u2026';
   }
+
+  typingBar.appendChild(dotsEl);
+  typingBar.appendChild(avatarsEl);
+  typingBar.appendChild(textEl);
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
