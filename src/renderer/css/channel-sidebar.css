@@ -339,6 +339,79 @@
 .message-body > .message-content + .message-content {
   margin-top: 3px;
 }
+.message-body > .msg-row + .msg-row {
+  margin-top: 3px;
+}
+
+/* ── Message action buttons (edit / delete on hover) ── */
+.msg-row {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+}
+.msg-row > .message-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.msg-actions {
+  position: absolute;
+  right: 4px;
+  top: -2px;
+  display: none;
+  gap: 2px;
+  background: var(--surface0);
+  border: 1px solid var(--surface1);
+  border-radius: 6px;
+  padding: 2px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  z-index: 10;
+}
+.msg-row:hover .msg-actions { display: flex; }
+
+.msg-action-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 3px 5px;
+  border-radius: 4px;
+  font-size: 0.88rem;
+  line-height: 1;
+  color: var(--subtext0);
+  transition: background 0.12s, color 0.12s;
+}
+.msg-action-btn:hover { background: var(--surface2); color: var(--text); }
+.msg-action-delete:hover { background: var(--red); color: #fff; }
+
+.message-edited-tag {
+  font-size: 0.7rem;
+  color: var(--overlay0);
+  margin-left: 0.3rem;
+  font-style: italic;
+}
+
+.msg-edit-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface1);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: inherit;
+  font-family: inherit;
+  line-height: 1.5;
+  padding: 1px 6px;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(79,70,229,0.18);
+}
+
+.msg-edit-hint {
+  font-size: 0.7rem;
+  color: var(--subtext0);
+  margin-left: 0.5rem;
+  white-space: nowrap;
+  align-self: center;
+}
 
 /* Typing bar */
 #typing-bar {

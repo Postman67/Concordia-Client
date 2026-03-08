@@ -33,6 +33,7 @@ let chDragSrcId    = null;       // channel id being dragged
 let chDropInfo     = null;       // { toCategoryId: number|null, beforeChannelId: number|null }
 let catDragSrcId   = null;       // category id being dragged
 let catDropBeforeId = null;      // category id to insert before (null = append at end)
+let editingMsgId   = null;       // message id currently in inline-edit mode
 let serverMembers    = [];       // [{ user_id, username, is_owner, role?, avatar_url }]
 let serverCategories = [];       // [{ id, name, position }] â€” full list incl. empty ones
 let chContextTarget  = null;     // { id, name, categoryId } â€“ channel right-click

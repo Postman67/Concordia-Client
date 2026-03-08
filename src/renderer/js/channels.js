@@ -299,6 +299,7 @@ function finalizeChannelDrop() {
 }
 
 async function selectChannel(channelId) {
+  if (editingMsgId != null) cancelMsgEdit();
   // Leave previous channel
   if (activeChannelId && activeChannelId !== channelId) {
     socket.emit('channel:leave', activeChannelId);

@@ -48,8 +48,7 @@ function appendMessage(msg, doScroll = true) {
   const createdAt = msg.createdAt ?? msg.created_at;
   const timestamp = createdAt ? new Date(createdAt).getTime() : Date.now();
 
-  // Update avatar cache: prefer server-supplied avatar on the message itself,
-  // then fall back to what we already have cached.
+  // Update avatar cache
   const msgAvatarUrl = msg.user?.avatar_url ?? msg.avatar_url ?? null;
   if (msgAvatarUrl) {
     avatarCache[String(userId)] = msgAvatarUrl;
@@ -65,13 +64,9 @@ function appendMessage(msg, doScroll = true) {
   lastMsgMeta = { userId, timestamp };
 
   if (isContinuation) {
-    // Append just the content line to the existing message block
     const lastBody = messagesContainer.lastElementChild?.querySelector('.message-body');
     if (lastBody) {
-      const contentEl = document.createElement('div');
-      contentEl.className = 'message-content';
-      contentEl.textContent = msg.content;
-      lastBody.appendChild(contentEl);
+      lastBody.appendChild(buildMsgRow(msg, userId));
       if (doScroll) scrollToBottom();
       return;
     }
@@ -86,7 +81,186 @@ function appendMessage(msg, doScroll = true) {
   const el = document.createElement('div');
   el.className = 'message';
 
-  // Build avatar element safely â€” shows PFP if available, falls back to initials
+  const avatarEl = document.createElement('div');
+  avatarEl.className = 'avatar';
+  if (avatarUrl) {
+    const img = document.createElement('img');
+    img.src = avatarUrl;
+    img.alt = initials;
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover';
+    img.addEventListener('error', () => {
+      img.remove();
+      avatarEl.style.background = avatarColor;
+      avatarEl.textContent = initials;
+    });
+    avatarEl.appendChild(img);
+  } else {
+    avatarEl.style.background = avatarColor;
+    avatarEl.textContent = initials;
+  }
+
+  const bodyEl = document.createElement('div');
+  bodyEl.className = 'message-body';
+
+  const metaEl = document.createElement('div');
+  metaEl.className = 'message-meta';
+  const authorSpan = document.createElement('span');
+  authorSpan.className = 'message-author';
+  authorSpan.textContent = username;
+  const timeSpan = document.createElement('span');
+  timeSpan.className = 'message-time';
+  timeSpan.textContent = time;
+  metaEl.appendChild(authorSpan);
+  metaEl.appendChild(timeSpan);
+
+  bodyEl.appendChild(metaEl);
+  bodyEl.appendChild(buildMsgRow(msg, userId));
+
+  el.appendChild(avatarEl);
+  el.appendChild(bodyEl);
+  messagesContainer.appendChild(el);
+
+  if (doScroll) scrollToBottom();
+}
+
+// Builds one .msg-row for a single message (first-in-group and continuations share this)
+function buildMsgRow(msg, authorId) {
+  const msgId = msg.id;
+  const row = document.createElement('div');
+  row.className = 'msg-row';
+  if (msgId != null) row.dataset.msgId = String(msgId);
+  row.dataset.authorId = String(authorId);
+
+  const contentEl = document.createElement('div');
+  contentEl.className = 'message-content';
+  contentEl.dataset.raw = msg.content ?? '';
+  contentEl.textContent = msg.content ?? '';
+  if (msg.is_edited) {
+    const tag = document.createElement('span');
+    tag.className = 'message-edited-tag';
+    tag.textContent = ' (edited)';
+    contentEl.appendChild(tag);
+  }
+  row.appendChild(contentEl);
+
+  if (msgId != null) {
+    const isOwn     = String(authorId) === String(currentUser?.id);
+    const canDelete = isOwn || hasPerm('MANAGE_MESSAGES');
+
+    if (isOwn || canDelete) {
+      const actions = document.createElement('div');
+      actions.className = 'msg-actions';
+
+      if (isOwn) {
+        const editBtn = document.createElement('button');
+        editBtn.className = 'msg-action-btn';
+        editBtn.title = 'Edit';
+        editBtn.textContent = '\u270F\uFE0F';
+        editBtn.addEventListener('click', () => startMsgEdit(row, msgId));
+        actions.appendChild(editBtn);
+      }
+
+      if (canDelete) {
+        const delBtn = document.createElement('button');
+        delBtn.className = 'msg-action-btn msg-action-delete';
+        delBtn.title = 'Delete';
+        delBtn.textContent = '\uD83D\uDDD1\uFE0F';
+        delBtn.addEventListener('click', () => deleteMsgById(msgId));
+        actions.appendChild(delBtn);
+      }
+
+      row.appendChild(actions);
+    }
+  }
+
+  return row;
+}
+
+function startMsgEdit(row, msgId) {
+  if (editingMsgId != null) cancelMsgEdit();
+  editingMsgId = msgId;
+
+  const contentEl = row.querySelector('.message-content');
+  const rawText   = contentEl.dataset.raw ?? '';
+  contentEl.style.display = 'none';
+  const actions = row.querySelector('.msg-actions');
+  if (actions) actions.style.display = 'none';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'msg-edit-input';
+  input.value = rawText;
+  row.insertBefore(input, actions ?? null);
+  input.focus();
+  input.select();
+
+  const hint = document.createElement('span');
+  hint.className = 'msg-edit-hint';
+  hint.textContent = '\u23CE save \u00B7 Esc to cancel';
+  row.appendChild(hint);
+
+  input.addEventListener('keydown', async (e) => {
+    if (e.key === 'Escape') {
+      cancelMsgEdit();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const newContent = input.value.trim();
+      if (!newContent) return;
+      if (newContent === rawText) { cancelMsgEdit(); return; }
+      try {
+        const updated = await apiPatch(`/api/messages/${msgId}`, { content: newContent });
+        // Update cache
+        for (const arr of Object.values(messages)) {
+          const m = arr.find(m => m.id === msgId);
+          if (m) { m.content = updated.content ?? newContent; m.is_edited = true; }
+        }
+        // Update DOM directly
+        contentEl.dataset.raw = updated.content ?? newContent;
+        contentEl.textContent = updated.content ?? newContent;
+        const tag = document.createElement('span');
+        tag.className = 'message-edited-tag';
+        tag.textContent = ' (edited)';
+        contentEl.appendChild(tag);
+        contentEl.style.removeProperty('display');
+        input.remove();
+        hint.remove();
+        if (actions) actions.style.removeProperty('display');
+        editingMsgId = null;
+      } catch (err) {
+        hint.textContent = err.message;
+        hint.style.color = 'var(--red)';
+      }
+    }
+  });
+}
+
+function cancelMsgEdit() {
+  if (editingMsgId == null) return;
+  const row = messagesContainer.querySelector(`[data-msg-id="${editingMsgId}"]`);
+  if (row) {
+    row.querySelector('.msg-edit-input')?.remove();
+    row.querySelector('.msg-edit-hint')?.remove();
+    const contentEl = row.querySelector('.message-content');
+    if (contentEl) contentEl.style.removeProperty('display');
+    const actions = row.querySelector('.msg-actions');
+    if (actions) actions.style.removeProperty('display');
+  }
+  editingMsgId = null;
+}
+
+async function deleteMsgById(msgId) {
+  try {
+    await apiDelete(`/api/messages/${msgId}`);
+    // Remove from local cache — socket broadcast handles other clients
+    for (const arr of Object.values(messages)) {
+      const idx = arr.findIndex(m => m.id === msgId);
+      if (idx !== -1) { arr.splice(idx, 1); break; }
+    }
+    messagesContainer.querySelector(`[data-msg-id="${msgId}"]`)?.remove();
+  } catch (err) {
+    console.error('[delete msg] failed:', err.message);
+  }
+} â€” shows PFP if available, falls back to initials
   const avatarEl = document.createElement('div');
   avatarEl.className = 'avatar';
   if (avatarUrl) {

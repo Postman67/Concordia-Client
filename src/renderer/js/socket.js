@@ -24,6 +24,44 @@ function connectSocket() {
     }
   });
 
+  socket.on('message:edited', ({ id, channelId, content, is_edited }) => {
+    const arr = messages[channelId];
+    if (arr) {
+      const m = arr.find(m => m.id === id);
+      if (m) { m.content = content; m.is_edited = is_edited; }
+    }
+    if (channelId === activeChannelId) {
+      const row = messagesContainer.querySelector(`[data-msg-id="${id}"]`);
+      if (row) {
+        // If this user is currently editing this message, cancel the edit first
+        if (editingMsgId === id) cancelMsgEdit();
+        const contentEl = row.querySelector('.message-content');
+        if (contentEl) {
+          contentEl.dataset.raw = content;
+          contentEl.textContent = content;
+          if (is_edited) {
+            const tag = document.createElement('span');
+            tag.className = 'message-edited-tag';
+            tag.textContent = ' (edited)';
+            contentEl.appendChild(tag);
+          }
+        }
+      }
+    }
+  });
+
+  socket.on('message:deleted', ({ id, channelId }) => {
+    const arr = messages[channelId];
+    if (arr) {
+      const idx = arr.findIndex(m => m.id === id);
+      if (idx !== -1) arr.splice(idx, 1);
+    }
+    if (editingMsgId === id) cancelMsgEdit();
+    if (channelId === activeChannelId) {
+      messagesContainer.querySelector(`[data-msg-id="${id}"]`)?.remove();
+    }
+  });
+
   socket.on('typing:update', ({ channelId, user, isTyping }) => {
     if (String(user.id) === String(currentUser.id)) return; // ignore self
     if (!typingUsers[channelId]) typingUsers[channelId] = new Map();
