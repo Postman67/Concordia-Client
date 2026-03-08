@@ -123,10 +123,26 @@
   height: 11px;
   border-radius: 50%;
   border: 2px solid var(--surface0);
+  transition: width 0.2s ease, height 0.2s ease, border-radius 0.2s ease,
+              bottom 0.2s ease, right 0.2s ease, border 0.2s ease;
 }
 .status-badge[data-status="online"]    { background: #57f287; }
 .status-badge[data-status="invisible"] { background: #747f8d; }
 .status-badge[data-status="offline"]   { background: #747f8d; }
+
+/* Offline: small black dot in the centre */
+.status-badge[data-status="offline"]::after,
+.status-badge[data-status="invisible"]::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #000;
+}
 
 /* Idle: crescent moon — yellow circle with a surface-coloured bite taken out */
 .status-badge[data-status="idle"] { background: #faa61a; }
@@ -153,6 +169,38 @@
   height: 2px;
   border-radius: 1px;
   background: #000;
+}
+
+/* Typing: morphs badge into a wide pill with three animated dots */
+.status-badge[data-typing="true"] {
+  width: 22px;
+  height: 9px;
+  border-radius: 5px;
+  border: none;
+  bottom: -3px;
+  right: -5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  overflow: hidden;
+  transform: translateZ(0); /* force compositing layer so overflow clips cleanly */
+}
+.status-badge[data-typing="true"]::after { display: none; }
+.status-badge[data-typing="true"] .typing-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #000;
+  flex-shrink: 0;
+  image-rendering: pixelated;
+  animation: typing-bounce 1.2s ease-in-out infinite;
+}
+.status-badge[data-typing="true"] .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.status-badge[data-typing="true"] .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30%           { transform: translateY(-2px); }
 }
 
 /* Status dot for context menu items */

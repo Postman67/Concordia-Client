@@ -78,6 +78,7 @@ function connectSocket() {
       typingUsers[channelId].delete(String(user.id));
     }
     if (channelId === activeChannelId) renderTypingBar();
+    if (typeof updateTypingBadges === 'function') updateTypingBadges();
   });
 
   socket.on('error', ({ message }) => {

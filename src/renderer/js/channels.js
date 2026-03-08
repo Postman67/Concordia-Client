@@ -515,6 +515,29 @@ function renderMembersPane() {
   updateMembersPaneHeaderCounts();
 }
 
+function updateTypingBadges() {
+  // Collect IDs of everyone currently typing in any channel on this server
+  const typingIds = new Set();
+  if (typeof typingUsers !== 'undefined' && typeof activeChannelId !== 'undefined') {
+    for (const map of Object.values(typingUsers)) {
+      for (const id of map.keys()) typingIds.add(id);
+    }
+  }
+  membersPaneList.querySelectorAll('.status-badge[data-member-id]').forEach(badge => {
+    const isTyping = typingIds.has(badge.dataset.memberId);
+    if (isTyping && badge.dataset.typing !== 'true') {
+      badge.dataset.typing = 'true';
+      badge.innerHTML = '<span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>';
+    } else if (!isTyping && badge.dataset.typing === 'true') {
+      delete badge.dataset.typing;
+      // delay dot removal until the morph-out transition finishes (~200ms)
+      setTimeout(() => {
+        if (badge.dataset.typing !== 'true') badge.innerHTML = '';
+      }, 220);
+    }
+  });
+}
+
 btnToggleMembers.addEventListener('click', () => {
   membersPaneVisible = !membersPaneVisible;
   membersPane.classList.toggle('hidden', !membersPaneVisible);
