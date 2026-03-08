@@ -497,7 +497,14 @@
   box-shadow: 0 4px 16px rgba(0,0,0,0.3);
 }
 
-#message-input { flex: 1; }
+#message-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+}
+#message-input:focus { border: none; box-shadow: none; }
 
 .send-btn { flex-shrink: 0; }
 
