@@ -78,25 +78,26 @@
             </button>
           </div>
           <ul id="channel-list"></ul>
-          <!-- User banner floats at the bottom of the channel sidebar -->
-          <div class="sidebar-footer">
-            <div class="sidebar-user" id="sidebar-user">
-              <div class="avatar-wrap">
-                <div class="sidebar-user-avatar" id="current-user-avatar">
-                  <img alt="" style="display:none" />
-                  <span></span>
-                </div>
-                <span class="status-badge" id="current-user-status-badge" data-status="offline"></span>
-              </div>
-              <span id="current-user-label"></span>
-            </div>
-            <div class="sidebar-footer-actions">
-              <button id="btn-settings" class="icon-btn" title="Settings">&#9881;</button>
-              <button id="btn-logout" class="icon-btn" title="Log out">&#9211;</button>
-            </div>
-          </div>
         </aside>
 
+      </div>
+
+      <!-- User banner floats across the full bottom of the left panel -->
+      <div class="sidebar-footer">
+        <div class="sidebar-user" id="sidebar-user">
+          <div class="avatar-wrap">
+            <div class="sidebar-user-avatar" id="current-user-avatar">
+              <img alt="" style="display:none" />
+              <span></span>
+            </div>
+            <span class="status-badge" id="current-user-status-badge" data-status="offline"></span>
+          </div>
+          <span id="current-user-label"></span>
+        </div>
+        <div class="sidebar-footer-actions">
+          <button id="btn-settings" class="icon-btn" title="Settings">&#9881;</button>
+          <button id="btn-logout" class="icon-btn" title="Log out">&#9211;</button>
+        </div>
       </div>
     </div>
 
@@ -121,12 +122,13 @@
           <div id="messages-container"></div>
         </div>
 
-        <div id="typing-bar"></div>
-
-        <form id="message-form">
-          <input id="message-input" type="text" placeholder="Message #channel" autocomplete="off" />
-          <button type="submit" class="btn-primary send-btn">Send</button>
-        </form>
+        <div id="message-panel">
+          <div id="typing-bar"></div>
+          <form id="message-form">
+            <input id="message-input" type="text" placeholder="Message #channel" autocomplete="off" />
+            <button type="submit" class="btn-primary send-btn">Send</button>
+          </form>
+        </div>
       </div>
     </main>
 

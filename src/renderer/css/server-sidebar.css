@@ -18,7 +18,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   width: 100%;
-  padding: 0 0 8px;
+  padding: 0 0 72px;
   scrollbar-width: none;
 }
 #server-list-icons::-webkit-scrollbar { display: none; }
