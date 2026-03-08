@@ -94,6 +94,15 @@ const renameModalInput   = document.getElementById('rename-modal-input');
 const renameModalForm    = document.getElementById('rename-modal-form');
 const btnCancelRename    = document.getElementById('btn-cancel-rename');
 const renameModalError   = document.getElementById('rename-modal-error');
+
+// Confirm modal
+const confirmModalOverlay = document.getElementById('confirm-modal-overlay');
+const confirmModalTitle   = document.getElementById('confirm-modal-title');
+const confirmModalMessage = document.getElementById('confirm-modal-message');
+const confirmModalError   = document.getElementById('confirm-modal-error');
+const btnCancelConfirm    = document.getElementById('btn-cancel-confirm');
+const btnOkConfirm        = document.getElementById('btn-ok-confirm');
+
 const messagesContainer  = document.getElementById('messages-container');
 const btnLoadMore      = document.getElementById('btn-load-more');
 const typingBar        = document.getElementById('typing-bar');

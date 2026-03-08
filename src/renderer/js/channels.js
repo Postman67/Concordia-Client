@@ -451,27 +451,28 @@ ctxChRename.addEventListener('click', () => {
   if (t) openRenameModal('channel', t.id, t.name);
 });
 
-ctxChDelete.addEventListener('click', async () => {
+ctxChDelete.addEventListener('click', () => {
   const t = chContextTarget;
   hideChContextMenu();
   if (!t) return;
-  if (!confirm(`Delete #${t.name}? This cannot be undone.`)) return;
-  try {
-    await apiDelete(`/api/channels/${t.id}`);
-    channels = channels.filter(c => c.id !== t.id);
-    if (t.id === activeChannelId) {
-      delete messages[t.id];
-      activeChannelId = null;
-      renderChannelList();
-      const next = channels[0];
-      if (next) selectChannel(next.id);
-      else { channelView.classList.add('hidden'); noChannelPlaceholder.classList.remove('hidden'); }
-    } else {
-      renderChannelList();
+  showDeleteConfirm(
+    'Delete Channel',
+    `Delete #${t.name}? This cannot be undone.`,
+    async () => {
+      await apiDelete(`/api/channels/${t.id}`);
+      channels = channels.filter(c => c.id !== t.id);
+      if (t.id === activeChannelId) {
+        delete messages[t.id];
+        activeChannelId = null;
+        renderChannelList();
+        const next = channels[0];
+        if (next) selectChannel(next.id);
+        else { channelView.classList.add('hidden'); noChannelPlaceholder.classList.remove('hidden'); }
+      } else {
+        renderChannelList();
+      }
     }
-  } catch (err) {
-    alert(`Could not delete channel: ${err.message}`);
-  }
+  );
 });
 
 ctxCatCreateChannel.addEventListener('click', () => {
@@ -486,25 +487,56 @@ ctxCatRename.addEventListener('click', () => {
   if (t) openRenameModal('category', t.id, t.name);
 });
 
-ctxCatDelete.addEventListener('click', async () => {
+ctxCatDelete.addEventListener('click', () => {
   const t = catContextTarget;
   hideCatContextMenu();
   if (!t) return;
-  if (!confirm(`Delete category "${t.name}"? Channels inside will become uncategorized.`)) return;
+  showDeleteConfirm(
+    'Delete Category',
+    `Delete category "${t.name}"? Channels inside will become uncategorized.`,
+    async () => {
+      await apiDelete(`/api/categories/${t.id}`);
+      channels = channels.map(c =>
+        c.category_id === t.id
+          ? { ...c, category_id: null, category_name: null, category_position: null }
+          : c
+      );
+      renderChannelList();
+    }
+  );
+});
+
+// ─── Confirm / delete modal ────────────────────────────────────────────────
+let _confirmCallback = null;
+
+function showDeleteConfirm(title, message, onConfirm) {
+  confirmModalTitle.textContent = title;
+  confirmModalMessage.textContent = message;
+  confirmModalError.textContent = '';
+  btnOkConfirm.disabled = false;
+  confirmModalOverlay.classList.remove('hidden');
+  _confirmCallback = onConfirm;
+}
+
+btnCancelConfirm.addEventListener('click', () => {
+  confirmModalOverlay.classList.add('hidden');
+  _confirmCallback = null;
+});
+
+btnOkConfirm.addEventListener('click', async () => {
+  if (!_confirmCallback) return;
+  confirmModalError.textContent = '';
+  btnOkConfirm.disabled = true;
   try {
-    await apiDelete(`/api/categories/${t.id}`);
-    channels = channels.map(c =>
-      c.category_id === t.id
-        ? { ...c, category_id: null, category_name: null, category_position: null }
-        : c
-    );
-    renderChannelList();
+    await _confirmCallback();
+    confirmModalOverlay.classList.add('hidden');
+    _confirmCallback = null;
   } catch (err) {
-    alert(`Could not delete category: ${err.message}`);
+    confirmModalError.textContent = err.message;
+    btnOkConfirm.disabled = false;
   }
 });
 
-// â”€â”€â”€ Rename modal (channels & categories) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let renameTarget = null;
 
 function openRenameModal(type, id, currentName) {

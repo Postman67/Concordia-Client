@@ -273,6 +273,21 @@
     </div>
   </div>
 
+  <!-- Generic confirm modal (replaces system confirm/alert) -->
+  <div id="confirm-modal-overlay" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="confirm-modal-title">Confirm</h2>
+      </div>
+      <p id="confirm-modal-message" style="color:var(--subtext1);font-size:0.9rem;margin:0 0 0.5rem;"></p>
+      <p class="error-msg" id="confirm-modal-error"></p>
+      <div class="modal-actions">
+        <button id="btn-cancel-confirm" class="btn-secondary">Cancel</button>
+        <button id="btn-ok-confirm" class="btn-danger">Delete</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Server info modal -->
   <div id="server-info-overlay" class="modal-overlay hidden">
     <div class="modal">
