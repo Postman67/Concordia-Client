@@ -1,0 +1,18 @@
+{
+  "name": "Concordia",
+  "short_name": "Concordia",
+  "description": "Real-time chat — open, federated, fast.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1e1e2e",
+  "theme_color": "#1e1e2e",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/branding/Icon%20-%20Indigo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

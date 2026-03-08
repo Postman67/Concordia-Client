@@ -1,0 +1,84 @@
+/*
+ * mobile.css — web-only responsive overrides
+ *
+ * server.js injects this stylesheet and the three mobile nav elements:
+ *   <input #mobile-nav-toggle>   — hidden checkbox that drives the CSS drawer
+ *   <label .mobile-hamburger>    — visible toggle button (☰ / ✕)
+ *   <label .mobile-backdrop>     — full-screen tap-to-close overlay
+ * All three are siblings of #chat-screen in the DOM, which makes the CSS
+ * sibling combinator (~) work for targeting children of #chat-screen.
+ *
+ * In Electron these elements are never injected, so this file is a no-op
+ * even if it somehow got linked. The .mobile-* classes are hidden by default.
+ */
+
+/* ── Elements hidden by default (desktop / Electron) ───────────────────── */
+.mobile-nav-toggle { display: none; }
+.mobile-hamburger  { display: none; }
+.mobile-backdrop   { display: none; }
+
+/* ── Tablet (≤ 768 px): hide the members pane ──────────────────────────── */
+@media (max-width: 768px) {
+  #members-pane {
+    display: none !important;
+  }
+}
+
+/* ── Phone (≤ 480 px): sidebar drawer + hamburger ──────────────────────── */
+@media (max-width: 480px) {
+  /* Hamburger button — floats over the top-left corner */
+  .mobile-hamburger {
+    display: flex !important;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 5001;
+    width: 36px;
+    height: 36px;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface1);
+    color: var(--text);
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  /* Left panel: pulled out of flow as a fixed drawer, off-screen by default */
+  #left-panel {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 4000;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    overflow-y: auto;
+  }
+
+  /* Drawer — open state */
+  #mobile-nav-toggle:checked ~ #chat-screen #left-panel {
+    transform: translateX(0);
+  }
+
+  /* Backdrop: shown when drawer open; clicking it (it is a <label>) closes it */
+  #mobile-nav-toggle:checked ~ .mobile-backdrop {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 3999;
+    cursor: pointer;
+  }
+
+  /* Touch-friendly minimum tap targets */
+  button,
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
