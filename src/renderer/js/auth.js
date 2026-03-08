@@ -68,8 +68,16 @@ async function onAuthenticated(jwt, user) {
   currentUserStatus = meRes?.user?.status ?? 'online';
   fedPut('/api/user/status', { status: 'online' }).catch(() => {});
   currentUserStatus = 'online';
+
+  // Connect to the Federation WebSocket
+  connectFedSocket(jwt);
+
+  // Heartbeat: WS ping (keeps connection alive + gets clock ack) + REST (updates last_seen in DB)
   if (heartbeatInterval) clearInterval(heartbeatInterval);
-  heartbeatInterval = setInterval(() => fedPost('/api/user/heartbeat', {}).catch(() => {}), 30000);
+  heartbeatInterval = setInterval(() => {
+    if (fedSocket?.connected) fedSocket.emit('ping');
+    fedPost('/api/user/heartbeat', {}).catch(() => {});
+  }, 25000);
 
   // Apply federation theme (overrides localStorage)
   const isLight = userSettings.theme === 'light';
@@ -157,6 +165,7 @@ btnLogout.addEventListener('click', () => {
   serverCategories = [];
   clearInterval(heartbeatInterval);
   heartbeatInterval = null;
+  if (fedSocket) { fedSocket.disconnect(); fedSocket = null; }
   currentUserStatus = 'online';
   memberStatusCache = {};
   channelView.classList.add('hidden');

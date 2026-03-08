@@ -37,6 +37,7 @@ let pendingCategoryId  = null;   // pre-selected category for new channel modal
 let currentUserStatus  = 'online';
 let memberStatusCache  = {};     // userId → status string
 let heartbeatInterval  = null;
+let fedSocket          = null;   // Federation Socket.io connection
 
 const GROUP_TIMEOUT_MS = 10 * 60 * 1000;
 
