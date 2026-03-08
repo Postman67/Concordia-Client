@@ -131,6 +131,14 @@ function buildMsgRow(msg, authorId) {
   if (msgId != null) row.dataset.msgId = String(msgId);
   row.dataset.authorId = String(authorId);
 
+  const createdAt = msg.createdAt ?? msg.created_at;
+  const hoverTimeEl = document.createElement('span');
+  hoverTimeEl.className = 'msg-hover-time';
+  hoverTimeEl.textContent = createdAt
+    ? new Date(createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : '';
+  row.appendChild(hoverTimeEl);
+
   const contentEl = document.createElement('div');
   contentEl.className = 'message-content';
   contentEl.dataset.raw = msg.content ?? '';
