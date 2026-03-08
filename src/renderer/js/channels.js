@@ -527,7 +527,7 @@ function renderMembersPane() {
         const crown = document.createElement('span');
         crown.className = 'member-owner-crown';
         crown.title = 'Server Owner';
-        crown.textContent = ' \u{1F451}';
+        crown.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M0 8L2 2L5 6L7 0L9 6L12 2L14 8L14 9L0 9Z"/><rect x="0" y="9.5" width="14" height="2" rx="0.5"/></svg>';
         nameEl.appendChild(crown);
       }
       row.appendChild(wrap);

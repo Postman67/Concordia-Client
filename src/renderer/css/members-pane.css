@@ -167,3 +167,11 @@
   border-radius: 1px;
   background: #000;
 }
+
+.member-owner-crown {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 3px;
+  color: #faa61a;
+  vertical-align: middle;
+}
