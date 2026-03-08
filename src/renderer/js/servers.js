@@ -1,6 +1,44 @@
 ﻿//  Server Sidebar
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
+// Shared tooltip element
+let _srvTooltip = null;
+function getServerTooltip() {
+  if (!_srvTooltip) {
+    _srvTooltip = document.createElement('div');
+    _srvTooltip.className = 'server-tooltip';
+    document.body.appendChild(_srvTooltip);
+  }
+  return _srvTooltip;
+}
+
+function showServerTooltip(wrap, srv) {
+  const tooltip = getServerTooltip();
+  const onlineStatuses = new Set(['online', 'idle', 'dnd']);
+  let online = 0, offline = 0;
+  if (srv.id === activeServerId && typeof serverMembers !== 'undefined' && typeof memberStatusCache !== 'undefined') {
+    serverMembers.forEach(m => {
+      const st = memberStatusCache[String(m.user_id)] || 'offline';
+      if (onlineStatuses.has(st)) online++; else offline++;
+    });
+  }
+  const name = srv.server_name || srv.server_address;
+  tooltip.innerHTML = `
+    <div class="server-tooltip-name">${name}</div>
+    <div class="server-tooltip-counts">
+      <div class="server-tooltip-count"><span class="server-tooltip-dot online"></span>${online} Online</div>
+      <div class="server-tooltip-count"><span class="server-tooltip-dot offline"></span>${offline} Offline</div>
+    </div>`;
+  const rect = wrap.getBoundingClientRect();
+  tooltip.style.top = (rect.top + rect.height / 2) + 'px';
+  tooltip.style.transform = 'translateX(0) translateY(-50%)';
+  tooltip.classList.add('visible');
+}
+
+function hideServerTooltip() {
+  if (_srvTooltip) _srvTooltip.classList.remove('visible');
+}
+
 function renderServerSidebar() {
   serverListIcons.innerHTML = '';
   [...userServers].sort((a, b) => a.position - b.position).forEach((srv) => {
@@ -14,7 +52,6 @@ function renderServerSidebar() {
     btn.className = 'server-icon-btn';
     btn.draggable = false;
     if (srv.id === activeServerId) btn.classList.add('active');
-    btn.title = srv.server_name || srv.server_address;
     btn.setAttribute('aria-label', srv.server_name || srv.server_address);
     if (srv.icon_url) {
       const img = document.createElement('img');
@@ -26,6 +63,9 @@ function renderServerSidebar() {
       btn.style.background = srv.id === activeServerId ? '' : stringToColor(srv.server_name || srv.server_address);
     }
     btn.addEventListener('click', () => selectServer(srv.id));
+
+    wrap.addEventListener('mouseenter', () => showServerTooltip(wrap, srv));
+    wrap.addEventListener('mouseleave', hideServerTooltip);
 
     // Right-click context menu
     wrap.addEventListener('contextmenu', (e) => {

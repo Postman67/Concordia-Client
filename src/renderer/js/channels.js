@@ -398,66 +398,104 @@ createCatForm.addEventListener('submit', async (e) => {
 // Channel / category settings handled by openChSettings() in server-settings.js
 
 // â”€â”€â”€ Members pane â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function getMemberOnlineOfflineCounts() {
+  let online = 0, offline = 0;
+  serverMembers.forEach(m => {
+    const st = memberStatusCache[String(m.user_id)] || 'offline';
+    if (st === 'online' || st === 'idle' || st === 'dnd') online++;
+    else offline++;
+  });
+  return { online, offline };
+}
+
+function updateMembersPaneHeaderCounts() {
+  const el = document.getElementById('members-pane-header-counts');
+  if (!el) return;
+  const { online, offline } = getMemberOnlineOfflineCounts();
+  el.innerHTML = `
+    <span class="members-pane-header-count">
+      <span class="members-pane-header-dot online"></span>${online}
+    </span>
+    <span class="members-pane-header-count">
+      <span class="members-pane-header-dot offline"></span>${offline}
+    </span>`;
+}
+
 function renderMembersPane() {
   membersPaneList.innerHTML = '';
   if (!serverMembers.length) return;
-  // Group by owner flag (new API) with fallback to legacy role field
+
   const isOwnerMember = m => m.is_owner === true || m.role === 'admin';
+  const isOnline = m => {
+    const st = memberStatusCache[String(m.user_id)] || 'offline';
+    return st === 'online' || st === 'idle' || st === 'dnd';
+  };
+
+  // Groups: Owner (online owners), Online (non-owners online), Offline (everyone offline)
+  const ownerOnline   = serverMembers.filter(m =>  isOwnerMember(m) &&  isOnline(m));
+  const ownerOffline  = serverMembers.filter(m =>  isOwnerMember(m) && !isOnline(m));
+  const memberOnline  = serverMembers.filter(m => !isOwnerMember(m) &&  isOnline(m));
+  const memberOffline = serverMembers.filter(m => !isOwnerMember(m) && !isOnline(m));
+
   const groups = [
-    { members: serverMembers.filter(m =>  isOwnerMember(m)), label: 'Owner'   },
-    { members: serverMembers.filter(m => !isOwnerMember(m)), label: 'Members' },
+    { members: ownerOnline,   label: 'Owner'   },
+    { members: memberOnline,  label: 'Online'  },
+    { members: [...ownerOffline, ...memberOffline], label: 'Offline' },
   ];
+
+  const buildRow = (m) => {
+    const row = document.createElement('div');
+    row.className = 'members-pane-row';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'avatar-wrap';
+
+    const avatarEl = document.createElement('div');
+    avatarEl.className = 'members-pane-avatar';
+    const cached = avatarCache[String(m.user_id)];
+    if (cached) {
+      const img = document.createElement('img');
+      img.src = cached;
+      img.alt = '';
+      avatarEl.appendChild(img);
+    } else {
+      avatarEl.textContent = m.username.slice(0, 2).toUpperCase();
+      avatarEl.style.background = stringToColor(m.username);
+    }
+
+    const badge = document.createElement('span');
+    badge.className = 'status-badge';
+    badge.dataset.memberId = String(m.user_id);
+    badge.dataset.status = memberStatusCache[String(m.user_id)] || 'offline';
+
+    wrap.appendChild(avatarEl);
+    wrap.appendChild(badge);
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'members-pane-name';
+    nameEl.textContent = m.username;
+    if (isOwnerMember(m)) {
+      const crown = document.createElement('span');
+      crown.className = 'member-owner-crown';
+      crown.title = 'Server Owner';
+      crown.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M0 8L2 2L5 6L7 0L9 6L12 2L14 8L14 9L0 9Z"/><rect x="0" y="9.5" width="14" height="2" rx="0.5"/></svg>';
+      nameEl.appendChild(crown);
+    }
+    row.appendChild(wrap);
+    row.appendChild(nameEl);
+    return row;
+  };
+
   groups.forEach(({ members: groupMembers, label }) => {
     if (!groupMembers.length) return;
     const groupLabel = document.createElement('div');
     groupLabel.className = 'members-pane-group-label';
     groupLabel.textContent = `${label} \u2014 ${groupMembers.length}`;
     membersPaneList.appendChild(groupLabel);
-    groupMembers.forEach(m => {
-      const row = document.createElement('div');
-      row.className = 'members-pane-row';
-
-      const wrap = document.createElement('div');
-      wrap.className = 'avatar-wrap';
-
-      const avatarEl = document.createElement('div');
-      avatarEl.className = 'members-pane-avatar';
-      const cached = avatarCache[String(m.user_id)];
-      if (cached) {
-        const img = document.createElement('img');
-        img.src = cached;
-        img.alt = '';
-        avatarEl.appendChild(img);
-      } else {
-        avatarEl.textContent = m.username.slice(0, 2).toUpperCase();
-        avatarEl.style.background = stringToColor(m.username);
-      }
-
-      const badge = document.createElement('span');
-      badge.className = 'status-badge';
-      badge.dataset.memberId = String(m.user_id);
-      badge.dataset.status = memberStatusCache[String(m.user_id)] || 'offline';
-
-      wrap.appendChild(avatarEl);
-      wrap.appendChild(badge);
-
-      const nameEl = document.createElement('span');
-      nameEl.className = 'members-pane-name';
-      nameEl.textContent = m.username;
-      if (isOwnerMember(m)) {
-        const crown = document.createElement('span');
-        crown.className = 'member-owner-crown';
-        crown.title = 'Server Owner';
-        crown.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14" width="13" height="13" fill="currentColor" aria-hidden="true"><path d="M0 8L2 2L5 6L7 0L9 6L12 2L14 8L14 9L0 9Z"/><rect x="0" y="9.5" width="14" height="2" rx="0.5"/></svg>';
-        nameEl.appendChild(crown);
-      }
-      row.appendChild(wrap);
-      row.appendChild(nameEl);
-      membersPaneList.appendChild(row);
-    });
+    groupMembers.forEach(m => membersPaneList.appendChild(buildRow(m)));
   });
 
-  // Background-fetch statuses for any uncached members, then patch badges in-place
+  // Background-fetch statuses for any uncached members, then re-render with correct grouping
   const memberIds = serverMembers.map(m => String(m.user_id));
   const uncached  = memberIds.filter(id => !(id in memberStatusCache));
   if (uncached.length) {
@@ -471,12 +509,10 @@ function renderMembersPane() {
           memberStatusCache[r.value.id] = r.value.status;
         }
       });
-      membersPaneList.querySelectorAll('.status-badge[data-member-id]').forEach(badge => {
-        const id = badge.dataset.memberId;
-        if (memberStatusCache[id]) badge.dataset.status = memberStatusCache[id];
-      });
+      renderMembersPane();
     });
   }
+  updateMembersPaneHeaderCounts();
 }
 
 btnToggleMembers.addEventListener('click', () => {
