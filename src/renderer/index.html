@@ -403,12 +403,20 @@
     <div class="server-settings-modal">
       <div class="server-settings-sidebar">
         <p class="ss-server-name" id="ss-server-name">Server</p>
-        <button class="ss-nav-item active" data-panel="overview">Overview</button>
-        <button class="ss-nav-item" data-panel="members">Members</button>
+        <p class="ss-nav-section-label">SERVER</p>
+        <button class="ss-nav-item active" data-panel="overview">&#9881;&nbsp; Overview</button>
+        <div class="ss-nav-divider"></div>
+        <p class="ss-nav-section-label">USER MANAGEMENT</p>
+        <button class="ss-nav-item" data-panel="roles">&#127993;&nbsp; Roles</button>
+        <button class="ss-nav-item" data-panel="members">&#128101;&nbsp; Members</button>
+        <div class="ss-nav-divider"></div>
+        <p class="ss-nav-section-label">CONTENT</p>
+        <button class="ss-nav-item" data-panel="channels">&#35;&nbsp; Channels &amp; Categories</button>
         <div class="ss-nav-divider"></div>
         <button id="ss-close-btn" class="ss-nav-item ss-nav-item--danger">&#10005;&nbsp; Close</button>
       </div>
       <div class="server-settings-content">
+
         <!-- Overview panel -->
         <div id="ss-panel-overview" class="ss-panel">
           <h2 class="ss-panel-title">Server Overview</h2>
@@ -433,12 +441,42 @@
             <button id="ss-btn-save-overview" class="btn-primary">Save Changes</button>
           </div>
         </div>
+
+        <!-- Roles panel -->
+        <div id="ss-panel-roles" class="ss-panel hidden">
+          <div class="ss-split-layout">
+            <div class="ss-split-left">
+              <div class="ss-split-header">
+                <span style="font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--subtext0)">ROLES</span>
+                <button id="ss-role-create-btn" class="btn-primary btn-sm">+ New</button>
+              </div>
+              <div id="ss-roles-list" class="ss-item-list"></div>
+            </div>
+            <div id="ss-role-editor" class="ss-split-right">
+              <p class="ss-placeholder">Select a role to edit, or create a new one.</p>
+            </div>
+          </div>
+        </div>
+
         <!-- Members panel -->
         <div id="ss-panel-members" class="ss-panel hidden">
           <h2 class="ss-panel-title">Members</h2>
           <p id="ss-members-status" style="font-size:0.85rem;min-height:1.2em;margin-bottom:0.5rem"></p>
           <div id="ss-members-list"></div>
         </div>
+
+        <!-- Channels & Categories panel -->
+        <div id="ss-panel-channels" class="ss-panel hidden">
+          <div id="ss-ch-tree-view">
+            <h2 class="ss-panel-title">Channels &amp; Categories</h2>
+            <div id="ss-ch-tree"></div>
+          </div>
+          <div id="ss-ch-detail-view" class="hidden">
+            <button id="ss-ch-back-btn" class="btn-secondary ss-back-btn">&#8592; Back to List</button>
+            <div id="ss-ch-detail-content" style="margin-top:1rem"></div>
+          </div>
+        </div>
+
       </div>
     </div>
   </div>
@@ -474,6 +512,7 @@
   <script src="js/socket.js"></script>
   <script src="js/channels.js"></script>
   <script src="js/messages.js"></script>
+  <script src="js/server-settings.js"></script>
   <script src="js/init.js"></script>
 </body>
 </html>

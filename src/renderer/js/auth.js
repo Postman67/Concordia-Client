@@ -79,6 +79,8 @@ async function onAuthenticated(jwt, user) {
     fedPost('/api/user/heartbeat', {}).catch(() => {});
   }, 25000);
 
+  startIdleTracking();
+
   // Apply federation theme (overrides localStorage)
   applyTheme(userSettings.theme ?? 'concordia');
   localStorage.setItem('theme', normalizeTheme(userSettings.theme));
@@ -164,6 +166,7 @@ btnLogout.addEventListener('click', () => {
   serverCategories = [];
   clearInterval(heartbeatInterval);
   heartbeatInterval = null;
+  stopIdleTracking();
   if (fedSocket) { fedSocket.disconnect(); fedSocket = null; }
   currentUserStatus = 'online';
   memberStatusCache = {};
@@ -203,8 +206,74 @@ statusContextMenu.querySelectorAll('.ctx-status-item').forEach(btn => {
     try {
       await fedPut('/api/user/status', { status });
       currentUserStatus = status;
+      autoSetIdle = false; // manual override clears the auto-idle flag
       updateUserDisplay();
+      // Restart idle countdown when going online; pause it for other statuses
+      if (status === 'online') {
+        resetIdleTimer();
+      } else {
+        clearTimeout(idleTimer);
+        idleTimer = null;
+      }
     } catch (_) {}
+  });
+});
+
+// ─── Idle detection ───────────────────────────────────────────────────────────
+const IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+
+function resetIdleTimer() {
+  clearTimeout(idleTimer);
+  idleTimer = null;
+
+  // If the user was auto-idled, restore them to online when they become active
+  if (autoSetIdle && token) {
+    autoSetIdle       = false;
+    currentUserStatus = 'online';
+    updateUserDisplay();
+    fedPut('/api/user/status', { status: 'online' }).catch(() => {});
+  }
+
+  // Don't schedule a new timer if not logged in or status is manually non-online
+  if (!token || currentUserStatus !== 'online') return;
+
+  idleTimer = setTimeout(() => {
+    if (currentUserStatus !== 'online') return;
+    autoSetIdle       = true;
+    currentUserStatus = 'idle';
+    updateUserDisplay();
+    fedPut('/api/user/status', { status: 'idle' }).catch(() => {});
+  }, IDLE_TIMEOUT_MS);
+}
+
+function startIdleTracking() {
+  ['mousemove', 'keydown', 'mousedown', 'wheel', 'touchstart'].forEach(evt =>
+    window.addEventListener(evt, resetIdleTimer, { passive: true })
+  );
+  resetIdleTimer();
+}
+
+function stopIdleTracking() {
+  clearTimeout(idleTimer);
+  idleTimer   = null;
+  autoSetIdle = false;
+  ['mousemove', 'keydown', 'mousedown', 'wheel', 'touchstart'].forEach(evt =>
+    window.removeEventListener(evt, resetIdleTimer)
+  );
+}
+
+// ─── Offline on app close ─────────────────────────────────────────────────────
+window.addEventListener('beforeunload', () => {
+  if (!token) return;
+  // keepalive: true lets the request complete even as the page unloads
+  fetch(`${FEDERATION_URL}/api/user/status`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ status: 'offline' }),
+    keepalive: true,
   });
 });
 

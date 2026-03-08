@@ -317,7 +317,10 @@ function switchSSPanel(panelId) {
 
 ssNavItems.forEach(btn => btn.addEventListener('click', () => {
   switchSSPanel(btn.dataset.panel);
-  if (btn.dataset.panel === 'members') loadSSMembers();
+  if (btn.dataset.panel === 'overview') loadSSOverview();
+  if (btn.dataset.panel === 'roles')    loadSSRoles();
+  if (btn.dataset.panel === 'members')  loadSSMembersNew();
+  if (btn.dataset.panel === 'channels') loadSSChannels();
 }));
 
 ssCloseBtn.addEventListener('click', closeServerSettings);
@@ -364,80 +367,6 @@ ssBtnSaveOverview.addEventListener('click', async () => {
     ssOverviewStatus.style.color = 'var(--red)';
   }
 });
-
-async function loadSSMembers() {
-  ssMembersStatus.textContent = '';
-  ssMembersList.innerHTML = '<p class="server-info-loading">Loading&hellip;</p>';
-  try {
-    const { members } = await apiGet('/api/server/members');
-    ssMembersList.innerHTML = '';
-    if (!members?.length) {
-      ssMembersList.innerHTML = '<p class="server-info-loading">No members found.</p>';
-      return;
-    }
-    // Seed avatar cache from server-supplied avatar_url for every member
-    members.forEach(m => {
-      if (m.avatar_url) avatarCache[String(m.user_id)] = m.avatar_url;
-    });
-    members.forEach(m => {
-      const row = document.createElement('div');
-      row.className = 'ss-member-row';
-
-      const avatarEl = document.createElement('div');
-      avatarEl.className = 'ss-member-avatar';
-      const cached = avatarCache[m.user_id];
-      if (cached) {
-        const img = document.createElement('img');
-        img.src = cached;
-        img.alt = '';
-        avatarEl.appendChild(img);
-      } else {
-        avatarEl.textContent = m.username.slice(0, 2).toUpperCase();
-        avatarEl.style.background = stringToColor(m.username);
-      }
-
-      const nameEl = document.createElement('span');
-      nameEl.className = 'ss-member-name';
-      nameEl.textContent = m.username;
-
-      const select = document.createElement('select');
-      select.className = 'ss-member-role-select';
-      ['member', 'moderator', 'admin'].forEach(role => {
-        const opt = document.createElement('option');
-        opt.value = role;
-        opt.textContent = role.charAt(0).toUpperCase() + role.slice(1);
-        if (role === m.role) opt.selected = true;
-        select.appendChild(opt);
-      });
-      if (String(m.user_id) === String(currentUser.id)) select.disabled = true;
-
-      select.addEventListener('change', async () => {
-        const prevRole = m.role;
-        select.disabled = true;
-        ssMembersStatus.textContent = '';
-        try {
-          const result = await apiPut(`/api/server/members/${m.user_id}/role`, { role: select.value });
-          m.role = result.member.role;
-          ssMembersStatus.textContent = `Updated ${m.username} to ${m.role}.`;
-          ssMembersStatus.style.color = 'var(--primary-text)';
-        } catch (err) {
-          select.value = prevRole;
-          ssMembersStatus.textContent = err.message;
-          ssMembersStatus.style.color = 'var(--red)';
-        } finally {
-          if (String(m.user_id) !== String(currentUser.id)) select.disabled = false;
-        }
-      });
-
-      row.appendChild(avatarEl);
-      row.appendChild(nameEl);
-      row.appendChild(select);
-      ssMembersList.appendChild(row);
-    });
-  } catch (err) {
-    ssMembersList.innerHTML = `<p class="server-info-loading">Failed: ${escapeHtml(err.message)}</p>`;
-  }
-}
 
 function openAddServerModal() {
   document.getElementById('add-server-address').value = '';

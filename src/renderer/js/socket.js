@@ -155,6 +155,34 @@ function connectSocket() {
   socket.on('category:overrides_updated', () => {
     fetchMyPermissions().then(() => renderChannelList());
   });
+
+  // Role CRUD — keep the settings panel in sync
+  socket.on('role:created', (role) => {
+    if (typeof ssLocalRoles === 'undefined') return;
+    if (!ssLocalRoles.find(r => r.id === role.id)) ssLocalRoles.push(role);
+    if (!document.getElementById('ss-panel-roles')?.classList.contains('hidden')) renderSSRoleList();
+  });
+
+  socket.on('role:updated', (role) => {
+    if (typeof ssLocalRoles === 'undefined') return;
+    const idx = ssLocalRoles.findIndex(r => r.id === role.id);
+    if (idx !== -1) ssLocalRoles[idx] = role;
+    if (!document.getElementById('ss-panel-roles')?.classList.contains('hidden')) {
+      renderSSRoleList();
+      if (typeof ssSelectedRoleId !== 'undefined' && ssSelectedRoleId === role.id) renderSSRoleEditor(role);
+    }
+  });
+
+  socket.on('role:deleted', ({ id }) => {
+    if (typeof ssLocalRoles === 'undefined') return;
+    ssLocalRoles = ssLocalRoles.filter(r => r.id !== id);
+    if (typeof ssSelectedRoleId !== 'undefined' && ssSelectedRoleId === id) {
+      ssSelectedRoleId = null;
+      const editor = document.getElementById('ss-role-editor');
+      if (editor) editor.innerHTML = '<p class="ss-placeholder">Role was deleted. Select another role to edit.</p>';
+    }
+    if (!document.getElementById('ss-panel-roles')?.classList.contains('hidden')) renderSSRoleList();
+  });
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
