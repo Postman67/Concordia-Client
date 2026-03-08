@@ -28,6 +28,12 @@ let dragSrcId      = null;       // federation server id being dragged
 let dragOverTarget = null;       // { id: serverId|null, insertBefore: bool }
 let chDragSrcId    = null;       // channel id being dragged
 let chDropInfo     = null;       // { toCategoryId: number|null, beforeChannelId: number|null }
+let serverMembers    = [];       // [{ user_id, username, role, avatar_url }]
+let serverCategories = [];       // [{ id, name, position }] — full list incl. empty ones
+let chContextTarget  = null;     // { id, name, categoryId } – channel right-click
+let catContextTarget = null;     // { id, name }           – category right-click
+let membersPaneVisible = true;
+let pendingCategoryId  = null;   // pre-selected category for new channel modal
 
 const GROUP_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -64,15 +70,28 @@ const btnServerName    = document.getElementById('btn-server-name');
 const channelList      = document.getElementById('channel-list');
 const currentUserLabel = document.getElementById('current-user-label');
 const currentUserAvatar= document.getElementById('current-user-avatar');
-const btnNewChannel    = document.getElementById('btn-new-channel');
 const btnLogout        = document.getElementById('btn-logout');
 
 // Chat pane
 const noChannelPlaceholder = document.getElementById('no-channel-placeholder');
 const channelView      = document.getElementById('channel-view');
-const channelNameLabel = document.getElementById('channel-name-label');
-const btnDeleteChannel = document.getElementById('btn-delete-channel');
-const messagesContainer= document.getElementById('messages-container');
+const channelNameLabel   = document.getElementById('channel-name-label');
+const btnToggleMembers   = document.getElementById('btn-toggle-members');
+const membersPane        = document.getElementById('members-pane');
+const membersPaneList    = document.getElementById('members-pane-list');
+const chContextMenu      = document.getElementById('ch-context-menu');
+const catContextMenu     = document.getElementById('cat-context-menu');
+const ctxChRename        = document.getElementById('ctx-ch-rename');
+const ctxChDelete        = document.getElementById('ctx-ch-delete');
+const ctxCatRename       = document.getElementById('ctx-cat-rename');
+const ctxCatDelete       = document.getElementById('ctx-cat-delete');
+const renameModalOverlay = document.getElementById('rename-modal-overlay');
+const renameModalTitle   = document.getElementById('rename-modal-title');
+const renameModalInput   = document.getElementById('rename-modal-input');
+const renameModalForm    = document.getElementById('rename-modal-form');
+const btnCancelRename    = document.getElementById('btn-cancel-rename');
+const renameModalError   = document.getElementById('rename-modal-error');
+const messagesContainer  = document.getElementById('messages-container');
 const btnLoadMore      = document.getElementById('btn-load-more');
 const typingBar        = document.getElementById('typing-bar');
 const messageForm      = document.getElementById('message-form');
@@ -85,6 +104,19 @@ const newChannelName   = document.getElementById('new-channel-name');
 const newChannelDesc   = document.getElementById('new-channel-desc');
 const btnCancelModal   = document.getElementById('btn-cancel-modal');
 const channelError     = document.getElementById('channel-error');
+
+// Create channel / category modals + context menus
+const chlistContextMenu      = document.getElementById('chlist-context-menu');
+const ctxChlistCreateChannel  = document.getElementById('ctx-chlist-create-channel');
+const ctxChlistCreateCategory = document.getElementById('ctx-chlist-create-category');
+const ctxServerCreateChannel  = document.getElementById('ctx-server-create-channel');
+const ctxServerCreateCategory = document.getElementById('ctx-server-create-category');
+const ctxCatCreateChannel     = document.getElementById('ctx-cat-create-channel');
+const createCatModalOverlay   = document.getElementById('create-cat-modal-overlay');
+const createCatForm           = document.getElementById('create-cat-form');
+const createCatInput          = document.getElementById('create-cat-input');
+const createCatError          = document.getElementById('create-cat-error');
+const btnCancelCreateCat      = document.getElementById('btn-cancel-create-cat');
 
 // Add-server modal
 const addServerOverlay  = document.getElementById('add-server-overlay');
@@ -434,6 +466,8 @@ let contextMenuTargetId = null;
 function openServerContextMenu(x, y, fedServerId) {
   contextMenuTargetId = fedServerId;
   btnServerName.dataset.open = 'true';
+  ctxServerCreateChannel.style.display  = currentUserRole === 'admin' ? '' : 'none';
+  ctxServerCreateCategory.style.display = currentUserRole === 'admin' ? '' : 'none';
   serverContextMenu.classList.remove('hidden');
 
   // Keep menu inside viewport (measure after making visible)
@@ -553,9 +587,9 @@ btnConfirmLeaveServer.addEventListener('click', async () => {
       messagesContainer.innerHTML = '';
       channelView.classList.add('hidden');
       noChannelPlaceholder.classList.remove('hidden');
-      btnNewChannel.style.display    = 'none';
-      btnDeleteChannel.style.display = 'none';
       ctxServerSettings.style.display = 'none';
+      serverMembers = [];
+      membersPaneList.innerHTML = '';
       localStorage.removeItem('last_server_id');
       localStorage.removeItem('last_channel_id');
     }
@@ -573,6 +607,15 @@ btnConfirmLeaveServer.addEventListener('click', async () => {
 ctxServerSettings.addEventListener('click', () => {
   closeServerContextMenu();
   openServerSettings();
+});
+
+ctxServerCreateChannel.addEventListener('click', () => {
+  closeServerContextMenu();
+  openCreateChannelModal(null);
+});
+ctxServerCreateCategory.addEventListener('click', () => {
+  closeServerContextMenu();
+  openCreateCategoryModal();
 });
 
 function openServerSettings() {
@@ -740,6 +783,8 @@ async function selectServer(fedServerId, restoreChannelId = null) {
   channels = [];
   messages = {};
   typingUsers = {};
+  serverMembers = [];
+  serverCategories = [];
   messagesContainer.innerHTML = '';
   channelList.innerHTML = '';
   channelView.classList.add('hidden');
@@ -790,8 +835,16 @@ async function selectServer(fedServerId, restoreChannelId = null) {
     if (me?.avatar_url) avatarCache[String(currentUser.id)] = me.avatar_url;
   } catch (_) { /* keep role from join response */ }
 
-  btnNewChannel.style.display = (currentUserRole === 'moderator' || currentUserRole === 'admin') ? '' : 'none';
   ctxServerSettings.style.display = currentUserRole === 'admin' ? '' : 'none';
+
+  // Load members in background: seed avatar cache and populate member pane
+  apiGet('/api/server/members').then(({ members }) => {
+    serverMembers = members ?? [];
+    serverMembers.forEach(m => {
+      if (m.avatar_url) avatarCache[String(m.user_id)] = m.avatar_url;
+    });
+    renderMembersPane();
+  }).catch(() => {});
 
   await loadChannels(channelToRestore);
 }
@@ -872,8 +925,11 @@ function connectSocket() {
 
   // ── Server-push: channels ──────────────────────────────────
   socket.on('channel:created', (ch) => {
-    channels.push(ch);
-    renderChannelList();
+    // Guard against double-add when the creator already pushed the channel locally
+    if (!channels.find((c) => c.id === ch.id)) {
+      channels.push(ch);
+      renderChannelList();
+    }
   });
 
   socket.on('channel:updated', (ch) => {
@@ -886,7 +942,9 @@ function connectSocket() {
   });
 
   socket.on('channel:deleted', ({ id }) => {
+    const existed = channels.some((c) => c.id === id);
     channels = channels.filter((c) => c.id !== id);
+    if (!existed) return; // already removed locally by the deleter
     if (id === activeChannelId) {
       // Active channel was deleted — move to first remaining channel
       activeChannelId = null;
@@ -909,11 +967,16 @@ function connectSocket() {
   });
 
   // ── Server-push: categories ────────────────────────────────
-  socket.on('category:created', () => {
-    // New empty category has no channels yet; re-render once channels arrive via channel:created
+  socket.on('category:created', (cat) => {
+    if (!serverCategories.find(c => c.id === cat.id)) {
+      serverCategories.push(cat);
+      renderChannelList();
+    }
   });
 
   socket.on('category:updated', ({ id, name, position }) => {
+    const cat = serverCategories.find(c => c.id === id);
+    if (cat) { if (name != null) cat.name = name; if (position != null) cat.position = position; }
     channels = channels.map((c) => {
       if (c.category_id !== id) return c;
       return { ...c, category_name: name ?? c.category_name, category_position: position ?? c.category_position };
@@ -922,6 +985,7 @@ function connectSocket() {
   });
 
   socket.on('category:deleted', ({ id }) => {
+    serverCategories = serverCategories.filter(c => c.id !== id);
     channels = channels.map((c) => {
       if (c.category_id !== id) return c;
       return { ...c, category_id: null, category_name: null, category_position: null };
@@ -930,7 +994,7 @@ function connectSocket() {
   });
 
   socket.on('categories:reordered', (cats) => {
-    // cats is the full updated category list; patch category_position on matching channels
+    serverCategories = cats;
     const posMap = new Map(cats.map((cat) => [cat.id, cat.position]));
     channels = channels.map((c) => {
       const newPos = posMap.get(c.category_id);
@@ -944,11 +1008,12 @@ function connectSocket() {
     if (String(user_id) === String(currentUser.id)) {
       currentUserRole = role;
       // Refresh gated UI elements
-      btnNewChannel.style.display      = (role === 'admin' || role === 'moderator') ? '' : 'none';
       ctxServerSettings.style.display  = role === 'admin' ? '' : 'none';
-      btnDeleteChannel.style.display   = role === 'admin' ? '' : 'none';
       renderChannelList(); // admin drag-handles shown/hidden by role
     }
+    // Update local members list and re-render pane regardless of whose role changed
+    const m = serverMembers.find(m => String(m.user_id) === String(user_id));
+    if (m) { m.role = role; renderMembersPane(); }
   });
 }
 
@@ -958,7 +1023,10 @@ function connectSocket() {
 
 async function loadChannels(restoreChannelId = null) {
   try {
-    channels = await apiGet('/api/channels');
+    [channels, serverCategories] = await Promise.all([
+      apiGet('/api/channels'),
+      apiGet('/api/categories').catch(() => []),
+    ]);
     renderChannelList();
     // Restore last channel if valid, otherwise fall back to first channel
     const target = (restoreChannelId && channels.find(c => c.id === restoreChannelId))
@@ -984,6 +1052,10 @@ function renderChannelList() {
 
   // Group channels by category, preserving API sort order (category_position, then position)
   const byCategory = new Map(); // category key → { label, categoryId, position, channels[] }
+  // Pre-populate with all known categories so empty ones still appear
+  serverCategories.forEach(cat => {
+    byCategory.set(cat.id, { label: cat.name, categoryId: cat.id, position: cat.position, channels: [] });
+  });
   channels.forEach((ch) => {
     const key = ch.category_id ?? '__none__';
     if (!byCategory.has(key)) {
@@ -1012,7 +1084,21 @@ function renderChannelList() {
     if (group.label) {
       const label = document.createElement('li');
       label.className = 'channel-section-label';
-      label.textContent = group.label;
+      const labelText = document.createElement('span');
+      labelText.className = 'channel-section-label-text';
+      labelText.textContent = group.label;
+      label.appendChild(labelText);
+      if (currentUserRole === 'moderator' || currentUserRole === 'admin') {
+        const catAddBtn = document.createElement('button');
+        catAddBtn.className = 'cat-add-channel-btn';
+        catAddBtn.title = 'Create channel in this category';
+        catAddBtn.textContent = '+';
+        catAddBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openCreateChannelModal(group.categoryId);
+        });
+        label.appendChild(catAddBtn);
+      }
 
       if (isAdmin) {
         // Dropping onto the category header = insert as first item in the category
@@ -1027,6 +1113,15 @@ function renderChannelList() {
         label.addEventListener('drop', (e) => { e.preventDefault(); finalizeChannelDrop(); });
       }
 
+      // Right-click: rename (mod+) / delete (admin)
+      if (group.categoryId && (currentUserRole === 'moderator' || currentUserRole === 'admin')) {
+        label.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          showCatContextMenu(e.clientX, e.clientY, group);
+        });
+      }
+
       channelList.appendChild(label);
     }
 
@@ -1036,6 +1131,15 @@ function renderChannelList() {
       li.dataset.id = ch.id;
       if (ch.id === activeChannelId) li.classList.add('active');
       li.addEventListener('click', () => selectChannel(ch.id));
+
+      // Right-click: rename (mod+) / delete (admin)
+      if (currentUserRole === 'moderator' || currentUserRole === 'admin') {
+        li.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          showChContextMenu(e.clientX, e.clientY, ch, group.categoryId);
+        });
+      }
 
       if (isAdmin) {
         li.draggable = true;
@@ -1155,9 +1259,6 @@ async function selectChannel(channelId) {
   const ch = channels.find((c) => c.id === channelId);
   channelNameLabel.textContent = ch ? ch.name : channelId;
 
-  // Show/hide delete button based on admin role
-  btnDeleteChannel.style.display = currentUserRole === 'admin' ? '' : 'none';
-
   noChannelPlaceholder.classList.add('hidden');
   channelView.classList.remove('hidden');
 
@@ -1175,13 +1276,15 @@ async function selectChannel(channelId) {
 }
 
 // ─── Create channel ───────────────────────────────────────────
-btnNewChannel.addEventListener('click', () => {
+function openCreateChannelModal(categoryId = null) {
+  pendingCategoryId = categoryId ?? null;
   channelError.textContent = '';
   newChannelName.value = '';
   newChannelDesc.value = '';
   modalOverlay.classList.remove('hidden');
   newChannelName.focus();
-});
+}
+
 btnCancelModal.addEventListener('click', () => modalOverlay.classList.add('hidden'));
 modalOverlay.addEventListener('click', (e) => {
   if (e.target === modalOverlay) modalOverlay.classList.add('hidden');
@@ -1194,6 +1297,7 @@ newChannelForm.addEventListener('submit', async (e) => {
     const ch = await apiPost('/api/channels', {
       name: newChannelName.value.trim(),
       description: newChannelDesc.value.trim() || undefined,
+      ...(pendingCategoryId != null ? { category_id: pendingCategoryId } : {}),
     });
     channels.push(ch);
     renderChannelList();
@@ -1204,22 +1308,254 @@ newChannelForm.addEventListener('submit', async (e) => {
   }
 });
 
-// ─── Delete channel ───────────────────────────────────────────
-btnDeleteChannel.addEventListener('click', async () => {
-  if (!activeChannelId) return;
-  const ch = channels.find((c) => c.id === activeChannelId);
-  if (!confirm(`Delete #${ch?.name ?? activeChannelId}? This cannot be undone.`)) return;
+// ─── Create category ──────────────────────────────────────────
+function openCreateCategoryModal() {
+  createCatInput.value = '';
+  createCatError.textContent = '';
+  createCatModalOverlay.classList.remove('hidden');
+  createCatInput.focus();
+}
+
+btnCancelCreateCat.addEventListener('click', () => createCatModalOverlay.classList.add('hidden'));
+createCatModalOverlay.addEventListener('click', (e) => {
+  if (e.target === createCatModalOverlay) createCatModalOverlay.classList.add('hidden');
+});
+createCatForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  createCatError.textContent = '';
+  const name = createCatInput.value.trim();
+  if (!name) return;
   try {
-    await apiDelete(`/api/channels/${activeChannelId}`);
-    channels = channels.filter((c) => c.id !== activeChannelId);
-    delete messages[activeChannelId];
-    activeChannelId = null;
-    channelView.classList.add('hidden');
-    noChannelPlaceholder.classList.remove('hidden');
+    const cat = await apiPost('/api/categories', { name });
+    if (!serverCategories.find(c => c.id === cat.id)) serverCategories.push(cat);
     renderChannelList();
+    createCatModalOverlay.classList.add('hidden');
+  } catch (err) {
+    createCatError.textContent = err.message;
+  }
+});
+
+// ─── Members pane ─────────────────────────────────────────────
+function renderMembersPane() {
+  membersPaneList.innerHTML = '';
+  if (!serverMembers.length) return;
+  const groups = [
+    { key: 'admin',     label: 'Admin'      },
+    { key: 'moderator', label: 'Moderators' },
+    { key: 'member',    label: 'Members'    },
+  ];
+  groups.forEach(({ key, label }) => {
+    const groupMembers = serverMembers.filter(m => m.role === key);
+    if (!groupMembers.length) return;
+    const groupLabel = document.createElement('div');
+    groupLabel.className = 'members-pane-group-label';
+    groupLabel.textContent = `${label} \u2014 ${groupMembers.length}`;
+    membersPaneList.appendChild(groupLabel);
+    groupMembers.forEach(m => {
+      const row = document.createElement('div');
+      row.className = 'members-pane-row';
+      const avatarEl = document.createElement('div');
+      avatarEl.className = 'members-pane-avatar';
+      const cached = avatarCache[String(m.user_id)];
+      if (cached) {
+        const img = document.createElement('img');
+        img.src = cached;
+        img.alt = '';
+        avatarEl.appendChild(img);
+      } else {
+        avatarEl.textContent = m.username.slice(0, 2).toUpperCase();
+        avatarEl.style.background = stringToColor(m.username);
+      }
+      const nameEl = document.createElement('span');
+      nameEl.className = 'members-pane-name';
+      nameEl.textContent = m.username;
+      row.appendChild(avatarEl);
+      row.appendChild(nameEl);
+      membersPaneList.appendChild(row);
+    });
+  });
+}
+
+btnToggleMembers.addEventListener('click', () => {
+  membersPaneVisible = !membersPaneVisible;
+  membersPane.classList.toggle('hidden', !membersPaneVisible);
+  btnToggleMembers.classList.toggle('active', membersPaneVisible);
+});
+
+// ─── Channel / category context menus ─────────────────────────
+function positionAndShowMenu(menu, x, y) {
+  menu.classList.remove('hidden');
+  const w = menu.offsetWidth  || 170;
+  const h = menu.offsetHeight || 100;
+  menu.style.left = `${Math.min(x, window.innerWidth  - w - 8)}px`;
+  menu.style.top  = `${Math.min(y, window.innerHeight - h - 8)}px`;
+}
+
+function showChContextMenu(x, y, ch, categoryId) {
+  hideCatContextMenu();
+  chContextTarget = { id: ch.id, name: ch.name, categoryId };
+  const isMod = currentUserRole === 'moderator' || currentUserRole === 'admin';
+  ctxChRename.style.display = isMod                     ? '' : 'none';
+  ctxChDelete.style.display = currentUserRole === 'admin' ? '' : 'none';
+  positionAndShowMenu(chContextMenu, x, y);
+}
+
+function hideChContextMenu() {
+  chContextMenu.classList.add('hidden');
+  chContextTarget = null;
+}
+
+function showCatContextMenu(x, y, group) {
+  hideChContextMenu();
+  catContextTarget = { id: group.categoryId, name: group.label };
+  const isMod = currentUserRole === 'moderator' || currentUserRole === 'admin';
+  ctxCatCreateChannel.style.display = isMod                      ? '' : 'none';
+  ctxCatRename.style.display        = isMod                      ? '' : 'none';
+  ctxCatDelete.style.display        = currentUserRole === 'admin' ? '' : 'none';
+  positionAndShowMenu(catContextMenu, x, y);
+}
+
+function hideCatContextMenu() {
+  catContextMenu.classList.add('hidden');
+  catContextTarget = null;
+}
+
+document.addEventListener('click', (e) => {
+  if (!chContextMenu.contains(e.target))     hideChContextMenu();
+  if (!catContextMenu.contains(e.target))    hideCatContextMenu();
+  if (!chlistContextMenu.contains(e.target)) hideChlistContextMenu();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { hideChContextMenu(); hideCatContextMenu(); hideChlistContextMenu(); }
+});
+
+ctxChRename.addEventListener('click', () => {
+  const t = chContextTarget;
+  hideChContextMenu();
+  if (t) openRenameModal('channel', t.id, t.name);
+});
+
+ctxChDelete.addEventListener('click', async () => {
+  const t = chContextTarget;
+  hideChContextMenu();
+  if (!t) return;
+  if (!confirm(`Delete #${t.name}? This cannot be undone.`)) return;
+  try {
+    await apiDelete(`/api/channels/${t.id}`);
+    channels = channels.filter(c => c.id !== t.id);
+    if (t.id === activeChannelId) {
+      delete messages[t.id];
+      activeChannelId = null;
+      renderChannelList();
+      const next = channels[0];
+      if (next) selectChannel(next.id);
+      else { channelView.classList.add('hidden'); noChannelPlaceholder.classList.remove('hidden'); }
+    } else {
+      renderChannelList();
+    }
   } catch (err) {
     alert(`Could not delete channel: ${err.message}`);
   }
+});
+
+ctxCatCreateChannel.addEventListener('click', () => {
+  const t = catContextTarget;
+  hideCatContextMenu();
+  if (t) openCreateChannelModal(t.id);
+});
+
+ctxCatRename.addEventListener('click', () => {
+  const t = catContextTarget;
+  hideCatContextMenu();
+  if (t) openRenameModal('category', t.id, t.name);
+});
+
+ctxCatDelete.addEventListener('click', async () => {
+  const t = catContextTarget;
+  hideCatContextMenu();
+  if (!t) return;
+  if (!confirm(`Delete category "${t.name}"? Channels inside will become uncategorized.`)) return;
+  try {
+    await apiDelete(`/api/categories/${t.id}`);
+    channels = channels.map(c =>
+      c.category_id === t.id
+        ? { ...c, category_id: null, category_name: null, category_position: null }
+        : c
+    );
+    renderChannelList();
+  } catch (err) {
+    alert(`Could not delete category: ${err.message}`);
+  }
+});
+
+// ─── Rename modal (channels & categories) ─────────────────────
+let renameTarget = null;
+
+function openRenameModal(type, id, currentName) {
+  renameTarget = { type, id };
+  renameModalTitle.textContent = type === 'channel' ? 'Rename Channel' : 'Rename Category';
+  renameModalInput.value = currentName;
+  renameModalError.textContent = '';
+  renameModalOverlay.classList.remove('hidden');
+  requestAnimationFrame(() => { renameModalInput.select(); renameModalInput.focus(); });
+}
+
+renameModalForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!renameTarget) return;
+  const newName = renameModalInput.value.trim();
+  if (!newName) return;
+  renameModalError.textContent = '';
+  try {
+    if (renameTarget.type === 'channel') {
+      const updated = await apiPatch(`/api/channels/${renameTarget.id}`, { name: newName });
+      const idx = channels.findIndex(c => c.id === renameTarget.id);
+      if (idx !== -1) channels[idx] = { ...channels[idx], ...updated };
+      renderChannelList();
+      if (renameTarget.id === activeChannelId) channelNameLabel.textContent = newName;
+    } else {
+      await apiPatch(`/api/categories/${renameTarget.id}`, { name: newName });
+      const cat = serverCategories.find(c => c.id === renameTarget.id);
+      if (cat) cat.name = newName;
+      channels = channels.map(c =>
+        c.category_id === renameTarget.id ? { ...c, category_name: newName } : c
+      );
+      renderChannelList();
+    }
+    renameModalOverlay.classList.add('hidden');
+    renameTarget = null;
+  } catch (err) {
+    renameModalError.textContent = err.message;
+  }
+});
+
+btnCancelRename.addEventListener('click', () => {
+  renameModalOverlay.classList.add('hidden');
+  renameTarget = null;
+});
+renameModalOverlay.addEventListener('click', (e) => {
+  if (e.target === renameModalOverlay) { renameModalOverlay.classList.add('hidden'); renameTarget = null; }
+});
+
+// ─── Channel list empty-space context menu ──────────────────────────────
+function hideChlistContextMenu() { chlistContextMenu.classList.add('hidden'); }
+
+channelList.addEventListener('contextmenu', (e) => {
+  if (!activeServerId) return;
+  if (currentUserRole !== 'moderator' && currentUserRole !== 'admin') return;
+  e.preventDefault();
+  hideChContextMenu(); hideCatContextMenu();
+  ctxChlistCreateCategory.style.display = currentUserRole === 'admin' ? '' : 'none';
+  positionAndShowMenu(chlistContextMenu, e.clientX, e.clientY);
+});
+
+ctxChlistCreateChannel.addEventListener('click', () => {
+  hideChlistContextMenu();
+  openCreateChannelModal(null);
+});
+ctxChlistCreateCategory.addEventListener('click', () => {
+  hideChlistContextMenu();
+  openCreateCategoryModal();
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -1422,9 +1758,9 @@ btnLogout.addEventListener('click', () => {
   serverNameLabel.textContent = 'Channels';
   btnServerName.disabled = true;
   currentUserRole             = 'member';
-  btnNewChannel.style.display = 'none';
-  btnDeleteChannel.style.display = 'none';
   ctxServerSettings.style.display = 'none';
+  serverMembers = [];
+  serverCategories = [];
   channelView.classList.add('hidden');
   noChannelPlaceholder.querySelector('p').textContent = 'Select a channel to start chatting';
   noChannelPlaceholder.querySelector('p').style.color = '';
