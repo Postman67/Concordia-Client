@@ -98,13 +98,39 @@
   border: 2px solid var(--surface0);
 }
 .status-badge[data-status="online"]    { background: #57f287; }
-.status-badge[data-status="idle"]      { background: #faa61a; }
-.status-badge[data-status="dnd"]       { background: #ed4245; }
 .status-badge[data-status="invisible"] { background: #747f8d; }
 .status-badge[data-status="offline"]   { background: #747f8d; }
 
+/* Idle: crescent moon — yellow circle with a surface-coloured bite taken out */
+.status-badge[data-status="idle"] { background: #faa61a; }
+.status-badge[data-status="idle"]::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--surface0);
+}
+
+/* DND: red circle with a black dash through the centre */
+.status-badge[data-status="dnd"] { background: #ed4245; }
+.status-badge[data-status="dnd"]::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 2px;
+  border-radius: 1px;
+  background: #000;
+}
+
 /* Status dot for context menu items */
 .status-dot {
+  position: relative;
   display: inline-block;
   width: 10px;
   height: 10px;
@@ -112,7 +138,32 @@
   flex-shrink: 0;
 }
 .status-dot[data-status="online"]    { background: #57f287; }
-.status-dot[data-status="idle"]      { background: #faa61a; }
-.status-dot[data-status="dnd"]       { background: #ed4245; }
 .status-dot[data-status="invisible"] { background: #747f8d; }
 .status-dot[data-status="offline"]   { background: #747f8d; }
+
+/* Idle dot: crescent */
+.status-dot[data-status="idle"] { background: #faa61a; }
+.status-dot[data-status="idle"]::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--surface0);
+}
+
+/* DND dot: dash */
+.status-dot[data-status="dnd"] { background: #ed4245; }
+.status-dot[data-status="dnd"]::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 8px;
+  height: 2px;
+  border-radius: 1px;
+  background: #000;
+}
