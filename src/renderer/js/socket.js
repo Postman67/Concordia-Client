@@ -58,7 +58,14 @@ function connectSocket() {
     }
     if (editingMsgId === id) cancelMsgEdit();
     if (channelId === activeChannelId) {
-      messagesContainer.querySelector(`[data-msg-id="${id}"]`)?.remove();
+      const row = messagesContainer.querySelector(`[data-msg-id="${id}"]`);
+      if (row) {
+        const messageBlock = row.closest('.message');
+        row.remove();
+        if (messageBlock && !messageBlock.querySelector('.msg-row')) {
+          messageBlock.remove();
+        }
+      }
     }
   });
 

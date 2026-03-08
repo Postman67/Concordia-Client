@@ -173,7 +173,17 @@ function buildMsgRow(msg, authorId) {
         delBtn.className = 'msg-action-btn msg-action-delete';
         delBtn.title = 'Delete';
         delBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" width="13" height="13"><path d="M11 1.75V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM6.5 1.75V3h3V1.75a.25.25 0 0 0-.25-.25h-2.5a.25.25 0 0 0-.25.25ZM4.997 6.5a.75.75 0 0 0-1.5.077l.418 6.323A1.75 1.75 0 0 0 5.666 14.5h4.668a1.75 1.75 0 0 0 1.75-1.6l.418-6.323a.75.75 0 0 0-1.498-.077l-.419 6.323a.25.25 0 0 1-.25.177H5.666a.25.25 0 0 1-.25-.177L4.997 6.5Z"/></svg>';
-        delBtn.addEventListener('click', () => deleteMsgById(msgId));
+        delBtn.addEventListener('click', (e) => {
+          if (e.shiftKey) {
+            deleteMsgById(msgId);
+          } else {
+            showDeleteConfirm(
+              'Delete Message',
+              'Are you sure you want to delete this message? This cannot be undone.',
+              () => deleteMsgById(msgId)
+            );
+          }
+        });
         actions.appendChild(delBtn);
       }
 
@@ -264,7 +274,15 @@ async function deleteMsgById(msgId) {
       const idx = arr.findIndex(m => m.id === msgId);
       if (idx !== -1) { arr.splice(idx, 1); break; }
     }
-    messagesContainer.querySelector(`[data-msg-id="${msgId}"]`)?.remove();
+    const row = messagesContainer.querySelector(`[data-msg-id="${msgId}"]`);
+    if (row) {
+      const messageBlock = row.closest('.message');
+      row.remove();
+      // If the block has no more msg-rows, remove the whole block
+      if (messageBlock && !messageBlock.querySelector('.msg-row')) {
+        messageBlock.remove();
+      }
+    }
   } catch (err) {
     console.error('[delete msg] failed:', err.message);
   }
