@@ -39,6 +39,44 @@ function hideServerTooltip() {
   if (_srvTooltip) _srvTooltip.classList.remove('visible');
 }
 
+// ── Server health checks ──────────────────────────────────────────────────
+// Fire-and-forget: called once after login. Updates icons as results arrive.
+function checkAllServerHealth() {
+  userServers.forEach(srv => _checkOneServer(srv));
+}
+
+async function _checkOneServer(srv) {
+  const url = buildServerUrl(srv.server_address);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(`${url}/api/health`, {
+      method: 'GET',
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    serverHealthCache[srv.id] = res.ok;
+  } catch {
+    clearTimeout(timer);
+    serverHealthCache[srv.id] = false;
+  }
+  _applyServerHealthState(srv.id, serverHealthCache[srv.id]);
+}
+
+function _applyServerHealthState(serverId, healthy) {
+  const wrap = serverListIcons.querySelector(`.server-icon-wrap[data-id="${serverId}"]`);
+  if (!wrap) return;
+  const btn = wrap.querySelector('.server-icon-btn');
+  if (!btn) return;
+  if (healthy) {
+    wrap.classList.remove('server-offline');
+    btn.disabled = false;
+  } else {
+    wrap.classList.add('server-offline');
+    btn.disabled = true;
+  }
+}
+
 function renderServerSidebar() {
   serverListIcons.innerHTML = '';
 
@@ -84,8 +122,17 @@ function renderServerSidebar() {
     }
     btn.addEventListener('click', () => selectServer(srv.id));
 
-    wrap.addEventListener('mouseenter', () => showServerTooltip(wrap, srv));
-    wrap.addEventListener('mouseleave', hideServerTooltip);
+    // Apply known health state immediately (populated from a previous check)
+    if (serverHealthCache[srv.id] === false) {
+      wrap.classList.add('server-offline');
+      btn.disabled = true;
+    }
+
+    // Tooltip on hover — skip on touch devices (tooltip gets stuck on tap)
+    if (window.matchMedia('(hover: hover)').matches) {
+      wrap.addEventListener('mouseenter', () => showServerTooltip(wrap, srv));
+      wrap.addEventListener('mouseleave', hideServerTooltip);
+    }
 
     // Right-click context menu
     wrap.addEventListener('contextmenu', (e) => {

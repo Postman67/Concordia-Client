@@ -104,6 +104,7 @@ async function onAuthenticated(jwt, user) {
   authScreen.classList.add('hidden');
   chatScreen.classList.remove('hidden');
   renderServerSidebar();
+  checkAllServerHealth(); // fire health checks; icons update as results arrive
 
   // Restore last server/channel, or fall back to first server.
   // Server IDs are Federation UUIDs (strings) â€” do NOT coerce with Number().
@@ -172,6 +173,7 @@ btnLogout.addEventListener('click', () => {
   currentUser    = null;
   userSettings   = null;
   userServers    = [];
+  Object.keys(serverHealthCache).forEach(k => delete serverHealthCache[k]);
   activeServerId = null;
   activeServerUrl= null;
   activeChannelId= null;

@@ -102,6 +102,16 @@ body.theme-mono-light .server-list-divider { background: rgba(0,0,0,0.1); }
 /* â”€â”€â”€ Server drag-to-reorder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .server-icon-wrap.dragging { opacity: 0.3; }
 
+/* Offline / unreachable server */
+.server-icon-wrap.server-offline { cursor: not-allowed; }
+.server-icon-wrap.server-offline::before { display: none; }
+.server-icon-wrap.server-offline .server-icon-btn {
+  filter: grayscale(1) brightness(0.55);
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .drag-drop-line {
   width: 40px;
   height: 3px;

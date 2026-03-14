@@ -15,6 +15,7 @@ let userSettings   = null;    // { display_name, avatar_url, theme }
 let userServers    = [];      // [{ id, server_address, server_name, position }]
 let activeServerId = null;    // federation entry id
 let activeServerUrl= null;    // http:// URL for the active server
+const serverHealthCache = {};  // serverId → true (online) | false (offline) | undefined (unchecked)
 let socket         = null;
 let channels       = [];
 let activeChannelId= null;
