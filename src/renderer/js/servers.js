@@ -45,17 +45,19 @@ function checkAllServerHealth() {
   userServers.forEach(srv => _checkOneServer(srv));
 }
 
-async function _checkOneServer(srv) {
+async function _checkOneServer(srv, timeoutMs = 5000) {
   const url = buildServerUrl(srv.server_address);
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 5000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(`${url}/api/health`, {
+    // Any HTTP response (even 404) means the server is reachable.
+    // Only a thrown error (timeout, network unreachable) means truly offline.
+    await fetch(`${url}/api/health`, {
       method: 'GET',
       signal: controller.signal,
     });
     clearTimeout(timer);
-    serverHealthCache[srv.id] = res.ok;
+    serverHealthCache[srv.id] = true;
   } catch {
     clearTimeout(timer);
     serverHealthCache[srv.id] = false;
@@ -120,7 +122,13 @@ function renderServerSidebar() {
       btn.textContent = (srv.server_name || srv.server_address).slice(0, 2).toUpperCase();
       btn.style.background = srv.id === activeServerId ? '' : stringToColor(srv.server_name || srv.server_address);
     }
-    btn.addEventListener('click', () => selectServer(srv.id));
+    btn.addEventListener('click', async () => {
+      // Re-ping this server before connecting (3 s timeout for fast feedback).
+      // This catches servers that went offline after the initial startup check.
+      await _checkOneServer(srv, 3000);
+      if (serverHealthCache[srv.id] === false) return; // offline — icon already greyed
+      selectServer(srv.id);
+    });
 
     // Apply known health state immediately (populated from a previous check)
     if (serverHealthCache[srv.id] === false) {
