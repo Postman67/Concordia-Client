@@ -9,7 +9,7 @@
 
   let authed = false;
   if (savedToken && savedUser) {
-    await onAuthenticated(savedToken, savedUser);
+    await onAuthenticated(savedToken, savedUser, { showChatNow: false });
     authed = !!token; // null if fedGet triggered a 401 logout
   }
 
@@ -17,7 +17,13 @@
   const remaining = MIN_MS - (Date.now() - t0);
   if (remaining > 0) await new Promise(r => setTimeout(r, remaining));
 
-  if (!authed) authScreen.classList.remove('hidden');
+  // Reveal the appropriate screen only after the splash minimum time has elapsed,
+  // preventing the sidebar/channel list from being visible during the splash.
+  if (authed) {
+    chatScreen.classList.remove('hidden');
+  } else {
+    authScreen.classList.remove('hidden');
+  }
   splash.classList.add('fade-out');
   splash.addEventListener('transitionend', () => splash.remove(), { once: true });
 })();

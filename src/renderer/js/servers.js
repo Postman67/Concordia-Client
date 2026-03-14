@@ -132,8 +132,8 @@ function renderServerSidebar() {
       btn.disabled = true;
     }
 
-    // Tooltip on hover — skip on touch devices (tooltip gets stuck on tap)
-    if (window.matchMedia('(hover: hover)').matches) {
+    // Tooltip on hover — skip on touch/coarse-pointer devices (tooltip gets stuck on tap)
+    if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
       wrap.addEventListener('mouseenter', () => showServerTooltip(wrap, srv));
       wrap.addEventListener('mouseleave', hideServerTooltip);
     }

@@ -23,10 +23,13 @@ function showServerError(msg) {
   p.textContent = msg;
   p.style.color = 'var(--red)';
 
-  // On mobile web, open the nav drawer so the user can pick a different server
-  // (the error page has no header/back button). Safe on desktop — toggle is null.
+  // On mobile web: show the home-panel header so the back arrow is immediately
+  // visible, then open the nav drawer so the user can pick a different server.
   const toggle = document.getElementById('mobile-nav-toggle');
-  if (toggle) setTimeout(() => { toggle.checked = true; }, 350);
+  if (toggle) {
+    document.getElementById('home-panel-header')?.classList.remove('hidden');
+    setTimeout(() => { toggle.checked = true; }, 800);
+  }
 }
 
 function renderHomeSidebar() {

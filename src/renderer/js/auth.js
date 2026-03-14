@@ -38,7 +38,7 @@ registerForm.addEventListener('submit', async (e) => {
   }
 });
 
-async function onAuthenticated(jwt, user) {
+async function onAuthenticated(jwt, user, { showChatNow = true } = {}) {
   token = jwt;
   currentUser = user;
 
@@ -102,7 +102,7 @@ async function onAuthenticated(jwt, user) {
   }
 
   authScreen.classList.add('hidden');
-  chatScreen.classList.remove('hidden');
+  if (showChatNow) chatScreen.classList.remove('hidden');
   renderServerSidebar();
   checkAllServerHealth(); // fire health checks; icons update as results arrive
 
