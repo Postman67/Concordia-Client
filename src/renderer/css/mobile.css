@@ -136,18 +136,13 @@
      when the keyboard appears, regardless of any scroll/shift offset. */
   #message-panel {
     position: fixed !important;
-    bottom: env(safe-area-inset-bottom, 0px);
+    bottom: 0;
     left: 0;
     right: 0;
   }
 
-  /* Extend message list padding to clear the fixed bar + safe area gap */
+  /* Extend message list padding to clear the fixed bar */
   #message-list {
-    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
-  }
-
-  /* iOS home-bar safe area for user banner */
-  .sidebar-footer {
-    margin-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: 80px;
   }
 }
