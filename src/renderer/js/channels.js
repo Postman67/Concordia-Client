@@ -44,6 +44,11 @@ function showServerError(msg) {
   const p = noChannelPlaceholder.querySelector('#placeholder-default p');
   p.textContent = msg;
   p.style.color = 'var(--red)';
+
+  // On mobile web, open the nav drawer so the user can pick a different server
+  // (the error page has no header/back button). Safe on desktop — toggle is null.
+  const toggle = document.getElementById('mobile-nav-toggle');
+  if (toggle) setTimeout(() => { toggle.checked = true; }, 350);
 }
 
 function renderHomeSidebar() {
