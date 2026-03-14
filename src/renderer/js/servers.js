@@ -199,10 +199,12 @@ function selectHomePage() {
   renderServerSidebar();
   renderHomeSidebar();
 
+  // Keep channel-view hidden while the home sidebar loads;
+  // renderHomeSidebar → loadHomeSidebar(true) will restore the correct panel.
   channelView.classList.add('hidden');
   noChannelPlaceholder.classList.remove('hidden');
   placeholderDefault.classList.add('hidden');
-  placeholderHome.classList.remove('hidden');
+  placeholderHome.classList.add('hidden');
 
   localStorage.removeItem('last_server_id');
   localStorage.removeItem('last_channel_id');

@@ -27,7 +27,7 @@ function normalizeDmMsg(msg) {
 
 // ─── Home sidebar ─────────────────────────────────────────────────────────
 
-async function loadHomeSidebar() {
+async function loadHomeSidebar(restorePanel = false) {
   // Fetch conversations and pending incoming friend requests in parallel
   const [convRes, reqRes] = await Promise.all([
     socialGet('/api/conversations').catch(() => null),
@@ -38,6 +38,21 @@ async function loadHomeSidebar() {
   incomingRequests = reqRes?.requests       ?? [];
 
   buildHomeSidebarStructure();
+
+  if (restorePanel) restoreLastHomePanel();
+}
+
+function restoreLastHomePanel() {
+  const last = localStorage.getItem('last_home_panel') ?? 'friends';
+  if (last === 'requests') {
+    showRequestsPanel();
+  } else if (last.startsWith('conv:')) {
+    const convId = parseInt(last.slice(5), 10);
+    const conv = conversations.find(c => c.id === convId);
+    if (conv) { selectConversation(conv); } else { showFriendsPanel(); }
+  } else {
+    showFriendsPanel();
+  }
 }
 
 function buildHomeSidebarStructure() {
@@ -172,6 +187,7 @@ function updateRequestsBadge() {
 // ─── Select a DM conversation ─────────────────────────────────────────────
 
 async function selectConversation(conv) {
+  localStorage.setItem('last_home_panel', 'conv:' + conv.id);
   // Deactivate sidebar item for previous conversation
   if (activeConversationId) {
     socialSocket?.emit('dm:leave', activeConversationId);
@@ -274,6 +290,7 @@ function _setActiveHomeNav(activeId) {
 }
 
 async function showFriendsPanel() {
+  localStorage.setItem('last_home_panel', 'friends');
   // Collapse channel-view and other panels
   channelView.classList.add('hidden');
   homeRequestsPanel.classList.add('hidden');
@@ -378,6 +395,7 @@ async function showFriendsPanel() {
 // ─── Message Requests panel ───────────────────────────────────────────────
 
 async function showRequestsPanel() {
+  localStorage.setItem('last_home_panel', 'requests');
   channelView.classList.add('hidden');
   homeFriendsPanel.classList.add('hidden');
   noChannelPlaceholder.classList.remove('hidden');

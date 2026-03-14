@@ -51,8 +51,9 @@ function renderHomeSidebar() {
   btnServerName.disabled = true;
   document.getElementById('server-name-chevron').style.display = 'none';
   channelList.innerHTML = '';
-  // Delegate to home.js which builds the live sidebar with real API data
-  loadHomeSidebar();
+  // Delegate to home.js which builds the live sidebar with real API data.
+  // Pass true so the last-visited panel is restored after loading.
+  loadHomeSidebar(true);
 }
 
 function renderChannelList() {
