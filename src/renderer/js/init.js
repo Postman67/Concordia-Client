@@ -47,6 +47,14 @@ function closeMobileDrawer() {
   if (toggle) toggle.checked = false;
 }
 
+// On mobile web, open the drawer by default so the user starts at the nav.
+(function openDrawerOnMobileLoad() {
+  const toggle = document.getElementById('mobile-nav-toggle');
+  if (toggle && window.matchMedia('(max-width: 480px)').matches) {
+    toggle.checked = true;
+  }
+})();
+
 document.addEventListener('click', (e) => {
   const toggle = document.getElementById('mobile-nav-toggle');
   if (!toggle || !toggle.checked) return; // drawer not open or not in web mode

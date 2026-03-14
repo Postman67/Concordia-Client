@@ -13,9 +13,10 @@
  */
 
 /* ── Elements hidden by default (desktop / Electron) ───────────────────── */
-.mobile-nav-toggle { display: none; }
-.mobile-hamburger  { display: none; }
-.mobile-backdrop   { display: none; }
+.mobile-nav-toggle  { display: none; }
+.mobile-hamburger   { display: none; }
+.mobile-backdrop    { display: none; }
+.mobile-back-arrow  { display: none; }
 
 /* ── Landscape orientation block ───────────────────────────────────────── */
 @media (orientation: landscape) and (max-width: 900px) {
@@ -49,31 +50,28 @@
 
 /* ── Phone (≤ 480 px): sidebar drawer + hamburger ──────────────────────── */
 @media (max-width: 480px) {
-  /* Hamburger button — floats over the top-left corner */
-  .mobile-hamburger {
-    display: flex !important;
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    z-index: 5001;
-    width: 36px;
-    height: 36px;
+  /* Old hamburger button — fully hidden (replaced by inline back-arrow) */
+  .mobile-hamburger { display: none !important; }
+
+  /* Back arrow — shown inside #channel-header, inline with the channel name */
+  .mobile-back-arrow {
+    display: flex;
     align-items: center;
     justify-content: center;
-    background: var(--surface1);
+    flex-shrink: 0;
+    font-size: 1.5rem;
+    font-weight: 900;
     color: var(--text);
-    border: none;
-    border-radius: 8px;
-    font-size: 1.1rem;
+    padding: 0 0.4rem 0 0;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+    line-height: 1;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
   }
 
-  /* Push the server icon list down so the first icon clears the hamburger button */
-  #server-list-icons {
-    padding-top: 56px;
+  /* Hide the back arrow while the drawer is open (user is already in the nav) */
+  #mobile-nav-toggle:checked ~ #chat-screen .mobile-back-arrow {
+    display: none;
   }
 
   /* Left panel: pulled out of flow as a fixed drawer, off-screen by default */
