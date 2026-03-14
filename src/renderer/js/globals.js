@@ -69,9 +69,12 @@ const regError         = document.getElementById('reg-error');
 // Server sidebar
 const serverListIcons  = document.getElementById('server-list-icons');
 const serverContextMenu    = document.getElementById('server-context-menu');
-const ctxServerInfo        = document.getElementById('ctx-server-info');
-const ctxServerSettings    = document.getElementById('ctx-server-settings');
-const ctxServerLeave       = document.getElementById('ctx-server-leave');
+const ctxServerInfo           = document.getElementById('ctx-server-info');
+const ctxServerSettings       = document.getElementById('ctx-server-settings');
+const ctxServerLeave          = document.getElementById('ctx-server-leave');
+const serverIconContextMenu   = document.getElementById('server-icon-context-menu');
+const ctxIconServerInfo       = document.getElementById('ctx-icon-server-info');
+const ctxIconServerLeave      = document.getElementById('ctx-icon-server-leave');
 const serverInfoOverlay    = document.getElementById('server-info-overlay');
 const serverInfoName       = document.getElementById('server-info-name');
 const serverInfoBody       = document.getElementById('server-info-body');
@@ -137,11 +140,11 @@ const btnCancelModal   = document.getElementById('btn-cancel-modal');
 const channelError     = document.getElementById('channel-error');
 
 // Create channel / category modals + context menus
+const ctxServerCreateChannel  = document.getElementById('ctx-server-create-channel');
+const ctxServerCreateCategory = document.getElementById('ctx-server-create-category');
 const chlistContextMenu      = document.getElementById('chlist-context-menu');
 const ctxChlistCreateChannel  = document.getElementById('ctx-chlist-create-channel');
 const ctxChlistCreateCategory = document.getElementById('ctx-chlist-create-category');
-const ctxServerCreateChannel  = document.getElementById('ctx-server-create-channel');
-const ctxServerCreateCategory = document.getElementById('ctx-server-create-category');
 const ctxCatCreateChannel     = document.getElementById('ctx-cat-create-channel');
 const createCatModalOverlay   = document.getElementById('create-cat-modal-overlay');
 const createCatForm           = document.getElementById('create-cat-form');

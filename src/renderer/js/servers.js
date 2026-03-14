@@ -141,7 +141,8 @@ function renderServerSidebar() {
     // Right-click context menu
     wrap.addEventListener('contextmenu', (e) => {
       e.preventDefault();
-      openServerContextMenu(e.clientX, e.clientY, srv.id);
+      hideServerTooltip();
+      openServerIconContextMenu(e.clientX, e.clientY, srv.id);
     });
 
     // Drag-to-reorder
@@ -306,6 +307,7 @@ let contextMenuTargetId = null;
 function openServerContextMenu(x, y, fedServerId) {
   contextMenuTargetId = fedServerId;
   btnServerName.dataset.open = 'true';
+  ctxServerSettings.style.display       = currentUserRole === 'admin' ? '' : 'none';
   ctxServerCreateChannel.style.display  = currentUserRole === 'admin' ? '' : 'none';
   ctxServerCreateCategory.style.display = currentUserRole === 'admin' ? '' : 'none';
   serverContextMenu.classList.remove('hidden');
@@ -317,6 +319,25 @@ function openServerContextMenu(x, y, fedServerId) {
   const top  = Math.min(y, window.innerHeight - menuH - 8);
   serverContextMenu.style.left = `${left}px`;
   serverContextMenu.style.top  = `${top}px`;
+}
+
+function openServerIconContextMenu(x, y, fedServerId) {
+  closeServerContextMenu();
+  contextMenuTargetId = fedServerId;
+  serverIconContextMenu.classList.remove('hidden');
+
+  const menuW = serverIconContextMenu.offsetWidth  || 160;
+  const menuH = serverIconContextMenu.offsetHeight || 80;
+  const left = Math.min(x, window.innerWidth  - menuW - 8);
+  const top  = Math.min(y, window.innerHeight - menuH - 8);
+  serverIconContextMenu.style.left = `${left}px`;
+  serverIconContextMenu.style.top  = `${top}px`;
+}
+
+function closeServerIconContextMenu() {
+  serverIconContextMenu.classList.add('hidden');
+  if (!serverContextMenu.classList.contains('hidden')) return; // preserve dropdown target
+  contextMenuTargetId = null;
 }
 
 function closeServerContextMenu() {
@@ -341,35 +362,31 @@ btnServerName.addEventListener('click', (e) => {
 document.addEventListener('click', (e) => {
   if (btnServerName.contains(e.target)) return;
   if (!serverContextMenu.contains(e.target)) closeServerContextMenu();
+  if (!serverIconContextMenu.contains(e.target)) closeServerIconContextMenu();
 });
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeServerContextMenu();
+  if (e.key === 'Escape') { closeServerContextMenu(); closeServerIconContextMenu(); }
 });
 
-// Info
-ctxServerInfo.addEventListener('click', async () => {
-  const fedServerId = contextMenuTargetId;
-  closeServerContextMenu();
+// ─── Shared helpers ───────────────────────────────────────────────────────────
+async function _showServerInfoModal(fedServerId) {
   const srv = userServers.find(s => s.id === fedServerId);
   if (!srv) return;
-
   serverInfoName.textContent = srv.server_name || srv.server_address;
   serverInfoBody.innerHTML = '<p class="server-info-loading">Loading&hellip;</p>';
   serverInfoOverlay.classList.remove('hidden');
-
   try {
     const url = buildServerUrl(srv.server_address);
     const res = await fetch(`${url}/api/server/info`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const info = await res.json();
     serverInfoBody.innerHTML = '';
-    const rows = [
-      { label: 'Name',        value: info.name        ?? 'â€”' },
-      { label: 'Description', value: info.description ?? 'â€”' },
-      { label: 'Members',     value: info.member_count ?? 'â€”' },
+    [
+      { label: 'Name',        value: info.name        ?? '—' },
+      { label: 'Description', value: info.description ?? '—' },
+      { label: 'Members',     value: info.member_count ?? '—' },
       { label: 'Address',     value: srv.server_address },
-    ];
-    rows.forEach(({ label, value }) => {
+    ].forEach(({ label, value }) => {
       const row = document.createElement('div');
       row.className = 'server-info-row';
       row.innerHTML = `<label>${label}</label><span>${escapeHtml(String(value))}</span>`;
@@ -378,25 +395,37 @@ ctxServerInfo.addEventListener('click', async () => {
   } catch (err) {
     serverInfoBody.innerHTML = `<p class="server-info-loading">Failed to load: ${escapeHtml(err.message)}</p>`;
   }
-});
+}
 
-btnCloseServerInfo.addEventListener('click', () => serverInfoOverlay.classList.add('hidden'));
-serverInfoOverlay.addEventListener('click', (e) => {
-  if (e.target === serverInfoOverlay) serverInfoOverlay.classList.add('hidden');
-});
-
-// Leave
-ctxServerLeave.addEventListener('click', () => {
-  const fedServerId = contextMenuTargetId;
-  closeServerContextMenu();
+function _showLeaveServerModal(fedServerId) {
   const srv = userServers.find(s => s.id === fedServerId);
   if (!srv) return;
-
   leaveServerMessage.textContent = `Leave "${srv.server_name || srv.server_address}"? You can re-add it later.`;
   leaveServerError.textContent = '';
   btnConfirmLeaveServer.disabled = false;
   leaveServerOverlay.dataset.targetId = fedServerId;
   leaveServerOverlay.classList.remove('hidden');
+}
+
+// Info / Leave — server name dropdown
+ctxServerInfo.addEventListener('click', () => {
+  const id = contextMenuTargetId; closeServerContextMenu(); _showServerInfoModal(id);
+});
+ctxServerLeave.addEventListener('click', () => {
+  const id = contextMenuTargetId; closeServerContextMenu(); _showLeaveServerModal(id);
+});
+
+// Info / Leave — server icon right-click
+ctxIconServerInfo.addEventListener('click', () => {
+  const id = contextMenuTargetId; closeServerIconContextMenu(); _showServerInfoModal(id);
+});
+ctxIconServerLeave.addEventListener('click', () => {
+  const id = contextMenuTargetId; closeServerIconContextMenu(); _showLeaveServerModal(id);
+});
+
+btnCloseServerInfo.addEventListener('click', () => serverInfoOverlay.classList.add('hidden'));
+serverInfoOverlay.addEventListener('click', (e) => {
+  if (e.target === serverInfoOverlay) serverInfoOverlay.classList.add('hidden');
 });
 
 btnCancelLeaveServer.addEventListener('click', () => leaveServerOverlay.classList.add('hidden'));
@@ -427,7 +456,6 @@ btnConfirmLeaveServer.addEventListener('click', async () => {
       messagesContainer.innerHTML = '';
       channelView.classList.add('hidden');
       noChannelPlaceholder.classList.remove('hidden');
-      ctxServerSettings.style.display = 'none';
       serverMembers = [];
       membersPaneList.innerHTML = '';
       localStorage.removeItem('last_server_id');
@@ -634,7 +662,6 @@ async function selectServer(fedServerId, restoreChannelId = null) {
     channels         = load.channels   ?? [];
     serverCategories = load.categories ?? [];
 
-    ctxServerSettings.style.display = currentUserRole === 'admin' ? '' : 'none';
     renderMembersPane();
     renderChannelList();
 
