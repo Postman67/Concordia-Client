@@ -11,7 +11,7 @@ contextBridge.exposeInMainWorld('concordia', {
   // without having direct access to the socket object.
   createSocket(serverUrl, token) {
     const socket = io(serverUrl, {
-      auth: { token },
+      auth: { token, platform: 'desktop' },
       transports: ['websocket'],
       autoConnect: true,
     });

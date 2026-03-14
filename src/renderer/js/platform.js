@@ -10,8 +10,9 @@
 if (!window.concordia) {
   window.concordia = {
     createSocket(serverUrl, token) {
+      const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
       const socket = io(serverUrl, {
-        auth: { token },
+        auth: { token, platform: isMobile ? 'mobile_web' : 'web' },
         transports: ['websocket'],
         autoConnect: true,
       });
