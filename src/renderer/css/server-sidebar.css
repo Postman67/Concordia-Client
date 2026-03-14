@@ -112,6 +112,20 @@ body.theme-mono-light .server-list-divider { background: rgba(0,0,0,0.1); }
   flex-shrink: 0;
 }
 
+/* Home icon button — always circular, uses the Concordia logo */
+.home-icon-btn {
+  border-radius: 50%;
+  overflow: hidden;
+  padding: 0;
+}
+.home-icon-btn:hover {
+  border-radius: 50%;
+  background: var(--surface0);
+}
+.home-icon-btn.active {
+  border-radius: 50%;
+}
+
 .add-server-btn {
   background: var(--surface0);
   color: var(--primary-text);

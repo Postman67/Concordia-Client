@@ -28,6 +28,11 @@ async function loadHistory(channelId, before = null) {
 }
 
 btnLoadMore.addEventListener('click', () => {
+  if (activeConversationId) {
+    // DM load-more — delegated to home.js via custom event
+    document.dispatchEvent(new Event('_dmLoadMore'));
+    return;
+  }
   if (!activeChannelId) return;
   const msgs = messages[activeChannelId];
   const oldest = msgs && msgs.length ? msgs[0].created_at ?? msgs[0].createdAt : null;
@@ -226,15 +231,28 @@ function startMsgEdit(row, msgId) {
       if (!newContent) return;
       if (newContent === rawText) { cancelMsgEdit(); return; }
       try {
-        const updated = await apiPatch(`/api/messages/${msgId}`, { content: newContent });
-        // Update cache
-        for (const arr of Object.values(messages)) {
-          const m = arr.find(m => m.id === msgId);
-          if (m) { m.content = updated.content ?? newContent; m.is_edited = true; }
+        let updatedContent = newContent;
+        if (activeConversationId) {
+          // DM edit via Social API
+          const updated = await socialPatch(`/api/messages/${msgId}`, { content: newContent });
+          updatedContent = updated.content ?? newContent;
+          const cache = dmMessages[activeConversationId];
+          if (cache) {
+            const m = cache.find(m => m.id === msgId);
+            if (m) { m.content = updatedContent; m.is_edited = true; }
+          }
+        } else {
+          const updated = await apiPatch(`/api/messages/${msgId}`, { content: newContent });
+          updatedContent = updated.content ?? newContent;
+          // Update server channel cache
+          for (const arr of Object.values(messages)) {
+            const m = arr.find(m => m.id === msgId);
+            if (m) { m.content = updatedContent; m.is_edited = true; }
+          }
         }
         // Update DOM directly
-        contentEl.dataset.raw = updated.content ?? newContent;
-        contentEl.textContent = updated.content ?? newContent;
+        contentEl.dataset.raw = updatedContent;
+        contentEl.textContent = updatedContent;
         const tag = document.createElement('span');
         tag.className = 'message-edited-tag';
         tag.textContent = ' (edited)';
@@ -268,11 +286,20 @@ function cancelMsgEdit() {
 
 async function deleteMsgById(msgId) {
   try {
-    await apiDelete(`/api/messages/${msgId}`);
-    // Remove from local cache — socket broadcast handles other clients
-    for (const arr of Object.values(messages)) {
-      const idx = arr.findIndex(m => m.id === msgId);
-      if (idx !== -1) { arr.splice(idx, 1); break; }
+    if (activeConversationId) {
+      await socialDelete(`/api/messages/${msgId}`);
+      const cache = dmMessages[activeConversationId];
+      if (cache) {
+        const idx = cache.findIndex(m => m.id === msgId);
+        if (idx !== -1) cache.splice(idx, 1);
+      }
+    } else {
+      await apiDelete(`/api/messages/${msgId}`);
+      // Remove from local cache — socket broadcast handles other clients
+      for (const arr of Object.values(messages)) {
+        const idx = arr.findIndex(m => m.id === msgId);
+        if (idx !== -1) { arr.splice(idx, 1); break; }
+      }
     }
     const row = messagesContainer.querySelector(`[data-msg-id="${msgId}"]`);
     if (row) {
@@ -299,7 +326,18 @@ function scrollToBottom() {
 messageForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const content = messageInput.value.trim();
-  if (!content || !activeChannelId) return;
+  if (!content) return;
+
+  if (activeConversationId) {
+    // DM send
+    socialSocket?.emit('dm:send', { conversationId: activeConversationId, content });
+    messageInput.value = '';
+    clearTimeout(typingTimer);
+    socialSocket?.emit('typing:stop', activeConversationId);
+    return;
+  }
+
+  if (!activeChannelId) return;
   socket.emit('message:send', { channelId: activeChannelId, content });
   messageInput.value = '';
   // Stop typing indicator
@@ -308,6 +346,14 @@ messageForm.addEventListener('submit', (e) => {
 });
 
 messageInput.addEventListener('input', () => {
+  if (activeConversationId) {
+    socialSocket?.emit('typing:start', activeConversationId);
+    clearTimeout(typingTimer);
+    typingTimer = setTimeout(() => {
+      socialSocket?.emit('typing:stop', activeConversationId);
+    }, 2000);
+    return;
+  }
   if (!activeChannelId) return;
   socket.emit('typing:start', activeChannelId);
   clearTimeout(typingTimer);
@@ -321,8 +367,9 @@ messageInput.addEventListener('input', () => {
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 function renderTypingBar() {
-  if (!activeChannelId) { typingBar.innerHTML = ''; return; }
-  const users = [...(typingUsers[activeChannelId]?.values() ?? [])];
+  const contextId = activeConversationId ?? activeChannelId;
+  if (!contextId) { typingBar.innerHTML = ''; return; }
+  const users = [...(typingUsers[contextId]?.values() ?? [])];
 
   if (!users.length) {
     typingBar.innerHTML = '';

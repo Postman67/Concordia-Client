@@ -41,6 +41,26 @@ function hideServerTooltip() {
 
 function renderServerSidebar() {
   serverListIcons.innerHTML = '';
+
+  // ── Home / DMs button ─────────────────────────────────────────────────────
+  const homeWrap = document.createElement('div');
+  homeWrap.className = 'server-icon-wrap';
+  homeWrap.id = 'home-icon-wrap';
+  const homeBtn = document.createElement('button');
+  homeBtn.className = 'server-icon-btn home-icon-btn';
+  homeBtn.setAttribute('aria-label', 'Home');
+  const homeImg = document.createElement('img');
+  homeImg.src = '../../branding/Icon - Indigo.png';
+  homeImg.alt = 'Concordia';
+  homeBtn.appendChild(homeImg);
+  homeBtn.addEventListener('click', selectHomePage);
+  homeWrap.appendChild(homeBtn);
+  serverListIcons.appendChild(homeWrap);
+
+  const homeDivider = document.createElement('div');
+  homeDivider.className = 'server-list-divider';
+  serverListIcons.appendChild(homeDivider);
+
   [...userServers].sort((a, b) => a.position - b.position).forEach((srv) => {
     const wrap = document.createElement('div');
     wrap.className = 'server-icon-wrap';
@@ -141,6 +161,51 @@ function renderServerSidebar() {
   addBtn.addEventListener('click', openAddServerModal);
   addWrap.appendChild(addBtn);
   serverListIcons.appendChild(addWrap);
+}
+
+function selectHomePage() {
+  if (onHomePage) return;
+
+  if (socket) { socket.disconnect(); socket = null; }
+  clearInterval(heartbeatInterval);
+  heartbeatInterval = null;
+
+  // Leave any open DM room
+  if (activeConversationId) {
+    socialSocket?.emit('dm:leave', activeConversationId);
+    activeConversationId = null;
+    activeConvData = null;
+  }
+
+  activeServerId  = null;
+  activeServerUrl = null;
+  activeChannelId = null;
+  channels        = [];
+  messages        = {};
+  typingUsers     = {};
+  currentUserRole = 'member';
+  serverMembers   = [];
+  serverCategories = [];
+  memberStatusCache = {};
+  membersPaneList.innerHTML = '';
+  messagesContainer.innerHTML = '';
+
+  // Hide members pane — not applicable on the home screen
+  delete channelNameLabel.dataset.dm;
+  btnToggleMembers.classList.add('hidden');
+  membersPane.classList.add('hidden');
+
+  onHomePage = true;
+  renderServerSidebar();
+  renderHomeSidebar();
+
+  channelView.classList.add('hidden');
+  noChannelPlaceholder.classList.remove('hidden');
+  placeholderDefault.classList.add('hidden');
+  placeholderHome.classList.remove('hidden');
+
+  localStorage.removeItem('last_server_id');
+  localStorage.removeItem('last_channel_id');
 }
 
 function finalizeDrop() {
@@ -428,7 +493,22 @@ async function selectServer(fedServerId, restoreChannelId = null) {
   // No-op if the user clicks the server they're already on
   if (fedServerId === activeServerId) return;
 
+  onHomePage = false;
+  document.getElementById('server-name-chevron').style.display = '';
+
   if (socket) { socket.disconnect(); socket = null; }
+
+  // Leave any open DM room
+  if (activeConversationId) {
+    socialSocket?.emit('dm:leave', activeConversationId);
+    activeConversationId = null;
+    activeConvData = null;
+  }
+
+  // Restore server-channel UI state that DM mode may have overridden
+  delete channelNameLabel.dataset.dm;
+  btnToggleMembers.classList.remove('hidden');
+  if (membersPaneVisible) membersPane.classList.remove('hidden');
 
   // Reset channel/message state
   activeChannelId = null;
@@ -456,9 +536,13 @@ async function selectServer(fedServerId, restoreChannelId = null) {
   // Clear any previous server icon until we get fresh info
   updateServerHeaderIcon(null);
 
+  // Reset placeholder to default view before connecting
+  placeholderDefault.classList.remove('hidden');
+  placeholderHome.classList.add('hidden');
+
   // Reset placeholder to default text before connecting
-  noChannelPlaceholder.querySelector('p').textContent = 'Select a channel to start chatting';
-  noChannelPlaceholder.querySelector('p').style.color = '';
+  noChannelPlaceholder.querySelector('#placeholder-default p').textContent = 'Select a channel to start chatting';
+  noChannelPlaceholder.querySelector('#placeholder-default p').style.color = '';
 
   renderServerSidebar();
   connectSocket();

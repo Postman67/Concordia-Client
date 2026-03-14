@@ -105,7 +105,12 @@
     <main id="chat-pane">
       <!-- Placeholder shown when no channel selected -->
       <div id="no-channel-placeholder">
-        <p>Select a channel to start chatting</p>
+        <div id="placeholder-default"><p>Select a channel to start chatting</p></div>
+        <div id="placeholder-home" class="hidden">
+          <img src="../../branding/Wordmark - Indigo.svg" alt="Concordia" class="home-wordmark" />
+        </div>
+        <div id="home-friends-panel" class="home-panel hidden"></div>
+        <div id="home-requests-panel" class="home-panel hidden"></div>
       </div>
 
       <!-- Active channel view -->
@@ -538,13 +543,16 @@
   <script src="js/platform.js"></script>
   <script src="js/globals.js"></script>
   <script src="js/api.js"></script>
+  <script src="js/social-api.js"></script>
   <script src="js/theme.js"></script>
   <script src="js/fed-socket.js"></script>
+  <script src="js/social-socket.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/servers.js"></script>
   <script src="js/socket.js"></script>
   <script src="js/messages.js"></script>
   <script src="js/channels.js"></script>
+  <script src="js/home.js"></script>
   <script src="js/server-settings.js"></script>
   <script src="js/init.js"></script>
 </body>

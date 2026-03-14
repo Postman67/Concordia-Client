@@ -39,11 +39,18 @@ let serverCategories = [];       // [{ id, name, position }] â€” full list 
 let chContextTarget  = null;     // { id, name, categoryId } â€“ channel right-click
 let catContextTarget = null;     // { id, name }           â€“ category right-click
 let membersPaneVisible = true;
+let onHomePage         = false;  // true when the home/DM view is active
 let pendingCategoryId  = null;   // pre-selected category for new channel modal
 let currentUserStatus  = 'online';
 let memberStatusCache  = {};     // userId → status string
 let heartbeatInterval  = null;
 let fedSocket          = null;   // Federation Socket.io connection
+let socialSocket       = null;   // Social Socket.io connection
+let conversations      = [];      // [{ id, with: {user}, last_message }]
+let activeConversationId = null;  // id of open DM conversation
+let activeConvData     = null;    // full conversation object for open DM
+let dmMessages         = {};      // convId → [normalized msg, ...]
+let incomingRequests   = [];      // [{ friendship_id, sent_at, from: {user} }]
 
 const GROUP_TIMEOUT_MS = 10 * 60 * 1000;
 
@@ -83,7 +90,9 @@ const currentUserAvatar= document.getElementById('current-user-avatar');
 const btnLogout        = document.getElementById('btn-logout');
 
 // Chat pane
-const noChannelPlaceholder = document.getElementById('no-channel-placeholder');
+const noChannelPlaceholder  = document.getElementById('no-channel-placeholder');
+const placeholderDefault    = document.getElementById('placeholder-default');
+const placeholderHome       = document.getElementById('placeholder-home');
 const channelView      = document.getElementById('channel-view');
 const channelNameLabel   = document.getElementById('channel-name-label');
 const btnToggleMembers   = document.getElementById('btn-toggle-members');
@@ -170,6 +179,10 @@ const ssMembersStatus       = document.getElementById('ss-members-status');
 const statusContextMenu      = document.getElementById('status-context-menu');
 const currentUserStatusBadge = document.getElementById('current-user-status-badge');
 const sidebarUser            = document.getElementById('sidebar-user');
+
+// Home panels
+const homeFriendsPanel  = document.getElementById('home-friends-panel');
+const homeRequestsPanel = document.getElementById('home-requests-panel');
 
 
 

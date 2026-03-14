@@ -41,8 +41,18 @@ async function loadChannels(restoreChannelId = null) {
 function showServerError(msg) {
   channelView.classList.add('hidden');
   noChannelPlaceholder.classList.remove('hidden');
-  noChannelPlaceholder.querySelector('p').textContent = msg;
-  noChannelPlaceholder.querySelector('p').style.color = 'var(--red)';
+  const p = noChannelPlaceholder.querySelector('#placeholder-default p');
+  p.textContent = msg;
+  p.style.color = 'var(--red)';
+}
+
+function renderHomeSidebar() {
+  serverNameLabel.textContent = 'Direct Messages';
+  btnServerName.disabled = true;
+  document.getElementById('server-name-chevron').style.display = 'none';
+  channelList.innerHTML = '';
+  // Delegate to home.js which builds the live sidebar with real API data
+  loadHomeSidebar();
 }
 
 function renderChannelList() {
@@ -300,6 +310,19 @@ function finalizeChannelDrop() {
 
 async function selectChannel(channelId) {
   if (editingMsgId != null) cancelMsgEdit();
+
+  // Leave DM room if switching from a conversation
+  if (activeConversationId) {
+    socialSocket?.emit('dm:leave', activeConversationId);
+    activeConversationId = null;
+    activeConvData = null;
+  }
+
+  // Restore server-channel UI state that DM mode may have overridden
+  delete channelNameLabel.dataset.dm;
+  btnToggleMembers.classList.remove('hidden');
+  if (membersPaneVisible) membersPane.classList.remove('hidden');
+
   // Leave previous channel
   if (activeChannelId && activeChannelId !== channelId) {
     socket.emit('channel:leave', activeChannelId);

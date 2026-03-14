@@ -72,6 +72,9 @@ async function onAuthenticated(jwt, user) {
   // Connect to the Federation WebSocket
   connectFedSocket(jwt);
 
+  // Connect to the Social (DMs + friends) WebSocket
+  connectSocialSocket(jwt);
+
   // Heartbeat: WS ping (keeps connection alive + gets clock ack) + REST (updates last_seen in DB)
   if (heartbeatInterval) clearInterval(heartbeatInterval);
   heartbeatInterval = setInterval(() => {
@@ -188,11 +191,21 @@ btnLogout.addEventListener('click', () => {
   heartbeatInterval = null;
   stopIdleTracking();
   if (fedSocket) { fedSocket.disconnect(); fedSocket = null; }
+  if (socialSocket) { socialSocket.disconnect(); socialSocket = null; }
+  conversations = [];
+  activeConversationId = null;
+  activeConvData = null;
+  dmMessages = {};
+  incomingRequests = [];
   currentUserStatus = 'online';
   memberStatusCache = {};
+  onHomePage = false;
   channelView.classList.add('hidden');
-  noChannelPlaceholder.querySelector('p').textContent = 'Select a channel to start chatting';
-  noChannelPlaceholder.querySelector('p').style.color = '';
+  placeholderDefault.classList.remove('hidden');
+  placeholderHome.classList.add('hidden');
+  const _p = placeholderDefault.querySelector('p');
+  _p.textContent = 'Select a channel to start chatting';
+  _p.style.color = '';
   noChannelPlaceholder.classList.remove('hidden');
   chatScreen.classList.add('hidden');
   authScreen.classList.remove('hidden');
