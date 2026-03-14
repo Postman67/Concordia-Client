@@ -43,15 +43,17 @@ async function loadHomeSidebar(restorePanel = false) {
 }
 
 function restoreLastHomePanel() {
-  const last = localStorage.getItem('last_home_panel') ?? 'friends';
+  const last = localStorage.getItem('last_home_panel');
+  if (!last) return; // no history yet — leave the placeholder as-is
   if (last === 'requests') {
     showRequestsPanel();
+  } else if (last === 'friends') {
+    showFriendsPanel();
   } else if (last.startsWith('conv:')) {
     const convId = parseInt(last.slice(5), 10);
     const conv = conversations.find(c => c.id === convId);
-    if (conv) { selectConversation(conv); } else { showFriendsPanel(); }
-  } else {
-    showFriendsPanel();
+    if (conv) { selectConversation(conv); }
+    // if conversation no longer exists, leave placeholder as-is
   }
 }
 
