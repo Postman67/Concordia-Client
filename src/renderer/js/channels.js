@@ -326,6 +326,24 @@ async function selectChannel(channelId) {
   channelNameLabel.textContent = chName;
   messageInput.placeholder = `Message #${chName}`;
 
+  // Show/hide message box based on SEND_MESSAGES permission
+  const canSend = hasPerm('SEND_MESSAGES');
+  messageForm.classList.toggle('hidden', !canSend);
+  let noSendNotice = document.getElementById('no-send-notice');
+  if (!canSend) {
+    if (!noSendNotice) {
+      noSendNotice = document.createElement('div');
+      noSendNotice.id = 'no-send-notice';
+      noSendNotice.textContent = `You don't have permission to send messages in #${chName}`;
+      messageForm.parentNode.insertBefore(noSendNotice, messageForm);
+    } else {
+      noSendNotice.textContent = `You don't have permission to send messages in #${chName}`;
+      noSendNotice.classList.remove('hidden');
+    }
+  } else if (noSendNotice) {
+    noSendNotice.classList.add('hidden');
+  }
+
   noChannelPlaceholder.classList.add('hidden');
   channelView.classList.remove('hidden');
 
@@ -338,7 +356,7 @@ async function selectChannel(channelId) {
 
   socket.emit('channel:join', channelId);
   renderTypingBar();
-  messageInput.focus();
+  if (canSend) messageInput.focus();
   scrollToBottom();
 }
 
