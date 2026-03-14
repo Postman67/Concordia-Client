@@ -57,7 +57,7 @@ function connectSocialSocket(jwt) {
         const contentEl = row.querySelector('.message-content');
         if (contentEl) {
           contentEl.dataset.raw = msg.content;
-          contentEl.textContent = msg.content;
+          contentEl.innerHTML = renderMarkdown(msg.content);
           if (!contentEl.querySelector('.message-edited-tag')) {
             const tag = document.createElement('span');
             tag.className = 'message-edited-tag';

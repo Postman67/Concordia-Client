@@ -38,7 +38,7 @@ function connectSocket() {
         const contentEl = row.querySelector('.message-content');
         if (contentEl) {
           contentEl.dataset.raw = content;
-          contentEl.textContent = content;
+          contentEl.innerHTML = renderMarkdown(content);
           if (is_edited) {
             const tag = document.createElement('span');
             tag.className = 'message-edited-tag';

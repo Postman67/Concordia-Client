@@ -136,6 +136,51 @@ function appendMessage(msg, doScroll = true) {
   if (doScroll) scrollToBottom(true);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  Markdown / hyperlink renderer
+// ─────────────────────────────────────────────────────────────────────────────
+function renderMarkdown(raw) {
+  if (!raw) return '';
+  // Normalise line endings
+  const text = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  // Split on fenced code blocks — their content is preserved verbatim
+  const parts = text.split(/(```[\s\S]*?```)/g);
+  return parts.map((part, i) => {
+    if (i % 2 === 1) {
+      // Fenced code block: strip opening/closing ``` and optional lang tag
+      const inner = part.slice(3, -3);
+      const firstNewline = inner.indexOf('\n');
+      const code = firstNewline >= 0 ? inner.slice(firstNewline + 1) : inner;
+      return `<pre class="msg-pre"><code class="msg-code">${escapeHtml(code)}</code></pre>`;
+    }
+    return _renderInline(part);
+  }).join('');
+}
+
+function _renderInline(text) {
+  // HTML-escape first to prevent injection — markdown patterns don't use HTML special chars
+  let s = escapeHtml(text);
+  // Inline code
+  s = s.replace(/`([^`\n]+)`/g, '<code class="msg-code">$1</code>');
+  // Bold: **text** or __text__
+  s = s.replace(/\*\*(.+?)\*\*/gs, '<strong>$1</strong>');
+  s = s.replace(/__(.+?)__/gs, '<strong>$1</strong>');
+  // Italic: *text* (not adjacent to another *)
+  s = s.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/gs, '<em>$1</em>');
+  // Italic: _text_ (not within a word boundary, to avoid user_names)
+  s = s.replace(/(?<![a-zA-Z0-9])_([^_\n]+)_(?![a-zA-Z0-9])/g, '<em>$1</em>');
+  // Strikethrough: ~~text~~
+  s = s.replace(/~~(.+?)~~/gs, '<s>$1</s>');
+  // Blockquote: "> " at line start (> is &gt; after escapeHtml)
+  s = s.replace(/^&gt; (.*)$/gm, '<blockquote class="msg-blockquote">$1</blockquote>');
+  // URLs → clickable links (href uses already-escaped form; browser decodes entities on navigate)
+  s = s.replace(/https?:\/\/[^\s<>"']+/g,
+    url => `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`);
+  // Newlines → <br>
+  s = s.replace(/\n/g, '<br>');
+  return s;
+}
+
 // Builds one .msg-row for a single message (first-in-group and continuations share this)
 function buildMsgRow(msg, authorId) {
   const msgId = msg.id;
@@ -155,7 +200,7 @@ function buildMsgRow(msg, authorId) {
   const contentEl = document.createElement('div');
   contentEl.className = 'message-content';
   contentEl.dataset.raw = msg.content ?? '';
-  contentEl.textContent = msg.content ?? '';
+  contentEl.innerHTML = renderMarkdown(msg.content ?? '');
   if (msg.is_edited) {
     const tag = document.createElement('span');
     tag.className = 'message-edited-tag';
@@ -260,7 +305,7 @@ function startMsgEdit(row, msgId) {
         }
         // Update DOM directly
         contentEl.dataset.raw = updatedContent;
-        contentEl.textContent = updatedContent;
+        contentEl.innerHTML = renderMarkdown(updatedContent);
         const tag = document.createElement('span');
         tag.className = 'message-edited-tag';
         tag.textContent = ' (edited)';
