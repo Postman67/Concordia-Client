@@ -292,9 +292,22 @@ function finalizeDrop() {
   commitServerOrder();
 }
 
-function commitServerOrder() {
-  userServers.forEach(s =>
-    fedPatch(`/api/servers/${s.id}`, { position: s.position }).catch(() => {})
+async function commitServerOrder() {
+  const N = userServers.length;
+  if (N === 0) return;
+  // Pass 1: move all servers to temporary out-of-range positions so that no
+  // two entries share a position simultaneously (avoids uniqueness conflicts).
+  const offset = N + 1000;
+  await Promise.allSettled(
+    userServers.map((s, i) =>
+      fedPatch(`/api/servers/${s.id}`, { position: offset + i })
+    )
+  );
+  // Pass 2: set the real final positions (0..N-1); the range is now clear.
+  await Promise.allSettled(
+    userServers.map(s =>
+      fedPatch(`/api/servers/${s.id}`, { position: s.position })
+    )
   );
 }
 
