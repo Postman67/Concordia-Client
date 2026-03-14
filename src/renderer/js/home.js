@@ -164,6 +164,16 @@ function buildDmItem(conv) {
   li.appendChild(text);
 
   li.addEventListener('click', () => selectConversation(conv));
+
+  // Clicking the avatar opens a profile popup instead of entering the conversation
+  if (partner?.id) {
+    avatarEl.style.cursor = 'pointer';
+    avatarEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openProfilePopup(partner.id, avatarEl, partner);
+    });
+  }
+
   return li;
 }
 

@@ -537,6 +537,35 @@
     </div>
   </div>
 
+  <!-- Profile popup (user card) -->
+  <div id="profile-popup" class="hidden">
+    <div class="pp-banner pp-banner-default" id="pp-banner"></div>
+    <div class="pp-body">
+      <div class="pp-avatar-row">
+        <div class="avatar-wrap">
+          <div class="pp-avatar" id="pp-avatar"></div>
+          <span class="status-badge pp-status-badge" id="pp-status-badge" data-status="offline"></span>
+        </div>
+      </div>
+      <p class="pp-display-name" id="pp-display-name"></p>
+      <p class="pp-username hidden" id="pp-username"></p>
+      <p class="pp-custom-status hidden" id="pp-custom-status"></p>
+      <div id="pp-bio-section" class="hidden">
+        <p class="pp-section-label">Bio</p>
+        <p class="pp-bio" id="pp-bio"></p>
+      </div>
+      <div id="pp-member-since-section" class="hidden">
+        <p class="pp-section-label">Member Since</p>
+        <p class="pp-member-since" id="pp-member-since"></p>
+      </div>
+      <div id="pp-roles-section" class="hidden">
+        <p class="pp-section-label">Roles</p>
+        <div class="pp-roles" id="pp-roles"></div>
+      </div>
+      <div class="pp-actions" id="pp-actions"></div>
+    </div>
+  </div>
+
   <!-- Admin / system notice toast -->
   <div id="admin-notice-toast" class="admin-notice hidden" data-severity="info">
     <span id="admin-notice-message"></span>
@@ -557,6 +586,7 @@
   <script src="js/channels.js"></script>
   <script src="js/home.js"></script>
   <script src="js/server-settings.js"></script>
+  <script src="js/profile.js"></script>
   <script src="js/init.js"></script>
 </body>
 </html>

@@ -366,8 +366,8 @@ newChannelForm.addEventListener('submit', async (e) => {
       description: newChannelDesc.value.trim() || undefined,
       ...(pendingCategoryId != null ? { category_id: pendingCategoryId } : {}),
     });
-    channels.push(ch);
-    renderChannelList();
+    // Don't push locally — the server broadcasts a channel:created socket event
+    // to all clients including the creator, which handles the list update.
     modalOverlay.classList.add('hidden');
     selectChannel(ch.id);
   } catch (err) {
@@ -452,7 +452,11 @@ function renderMembersPane() {
 
   const buildRow = (m) => {
     const row = document.createElement('div');
-    row.className = 'members-pane-row';
+    row.className = 'members-pane-row clickable';
+    row.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openProfilePopup(m.user_id, row);
+    });
 
     const wrap = document.createElement('div');
     wrap.className = 'avatar-wrap';

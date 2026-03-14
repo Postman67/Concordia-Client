@@ -87,7 +87,11 @@ function appendMessage(msg, doScroll = true) {
   el.className = 'message';
 
   const avatarEl = document.createElement('div');
-  avatarEl.className = 'avatar';
+  avatarEl.className = 'avatar clickable';
+  avatarEl.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openProfilePopup(userId, avatarEl);
+  });
   if (avatarUrl) {
     const img = document.createElement('img');
     img.src = avatarUrl;
@@ -110,8 +114,12 @@ function appendMessage(msg, doScroll = true) {
   const metaEl = document.createElement('div');
   metaEl.className = 'message-meta';
   const authorSpan = document.createElement('span');
-  authorSpan.className = 'message-author';
+  authorSpan.className = 'message-author clickable';
   authorSpan.textContent = username;
+  authorSpan.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openProfilePopup(userId, authorSpan);
+  });
   const timeSpan = document.createElement('span');
   timeSpan.className = 'message-time';
   timeSpan.textContent = time;
