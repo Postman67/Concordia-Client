@@ -681,7 +681,10 @@ async function selectServer(fedServerId, restoreChannelId = null) {
     const target = (channelToRestore && channels.find(c => c.id === channelToRestore))
       ? channelToRestore
       : channels[0]?.id ?? null;
-    if (target) selectChannel(target);
+    // On mobile web the drawer is still open after tapping the server icon,
+    // so leave channel selection to the user rather than jumping straight in.
+    const isMobileWeb = !!document.getElementById('mobile-nav-toggle');
+    if (target && !isMobileWeb) selectChannel(target);
 
     // Successful response confirms server is online
     serverHealthCache[fedServerId] = true;
