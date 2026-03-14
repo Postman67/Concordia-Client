@@ -17,6 +17,29 @@
 .mobile-hamburger  { display: none; }
 .mobile-backdrop   { display: none; }
 
+/* ── Landscape orientation block ───────────────────────────────────────── */
+@media (orientation: landscape) and (max-width: 900px) {
+  body::after {
+    content: 'Please rotate your device to portrait mode';
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: var(--bg, #1a1a2e);
+    color: var(--subtext0, #a6adc8);
+    font-size: 1.1rem;
+    font-weight: 600;
+    font-family: inherit;
+    padding: 2rem;
+    pointer-events: all;
+  }
+  /* Freeze all scrolling while the overlay is showing */
+  body { overflow: hidden; }
+}
+
 /* ── Tablet (≤ 768 px): hide the members pane ──────────────────────────── */
 @media (max-width: 768px) {
   #members-pane {
@@ -46,6 +69,11 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
     -webkit-tap-highlight-color: transparent;
     user-select: none;
+  }
+
+  /* Push the server icon list down so the first icon clears the hamburger button */
+  #server-list-icons {
+    padding-top: 56px;
   }
 
   /* Left panel: pulled out of flow as a fixed drawer, off-screen by default */
