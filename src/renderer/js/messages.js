@@ -378,6 +378,17 @@ function scrollToBottom(smooth = false) {
 
 messageForm.addEventListener('submit', (e) => {
   e.preventDefault();
+  _sendMessage();
+});
+
+messageInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    _sendMessage();
+  }
+});
+
+function _sendMessage() {
   const content = messageInput.value.trim();
   if (!content) return;
 
@@ -385,6 +396,7 @@ messageForm.addEventListener('submit', (e) => {
     // DM send
     socialSocket?.emit('dm:send', { conversationId: activeConversationId, content });
     messageInput.value = '';
+    _resetInputHeight();
     clearTimeout(typingTimer);
     socialSocket?.emit('typing:stop', activeConversationId);
     return;
@@ -393,12 +405,23 @@ messageForm.addEventListener('submit', (e) => {
   if (!activeChannelId) return;
   socket.emit('message:send', { channelId: activeChannelId, content });
   messageInput.value = '';
+  _resetInputHeight();
   // Stop typing indicator
   clearTimeout(typingTimer);
   socket.emit('typing:stop', activeChannelId);
-});
+}
+
+function _resetInputHeight() {
+  messageInput.style.height = 'auto';
+  messageInput.style.height = messageInput.scrollHeight + 'px';
+}
+
 
 messageInput.addEventListener('input', () => {
+  // Auto-grow textarea height
+  messageInput.style.height = 'auto';
+  messageInput.style.height = messageInput.scrollHeight + 'px';
+
   if (activeConversationId) {
     socialSocket?.emit('typing:start', activeConversationId);
     clearTimeout(typingTimer);
