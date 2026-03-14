@@ -82,23 +82,32 @@
     top: 0;
     left: 0;
     bottom: 0;
+    right: 0;
     z-index: 4000;
     transform: translateX(-100%);
     transition: transform 0.25s ease;
     overflow-y: auto;
+    width: 100% !important;
   }
 
-  /* Drawer — open state */
+  /* Drawer — open state: cover the full screen */
   #mobile-nav-toggle:checked ~ #chat-screen #left-panel {
     transform: translateX(0);
   }
 
-  /* Backdrop: shown when drawer open; clicking it (it is a <label>) closes it */
+  /* Hide the chat pane and members pane while the drawer is open */
+  #mobile-nav-toggle:checked ~ #chat-screen #chat-pane,
+  #mobile-nav-toggle:checked ~ #chat-screen #members-pane {
+    visibility: hidden;
+  }
+
+  /* Backdrop: no longer needed for closing (tap sidebar items instead),
+     but keep it wired up as a fallback close target behind the drawer */
   #mobile-nav-toggle:checked ~ .mobile-backdrop {
     display: block !important;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: transparent;
     z-index: 3999;
     cursor: pointer;
   }

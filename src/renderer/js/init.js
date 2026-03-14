@@ -40,4 +40,27 @@ document.addEventListener('keydown', (e) => {
   sel.addRange(range);
 }, true);
 
+// ── Mobile: close drawer when user picks a channel/server/DM ─────────────
+// The drawer is CSS-driven by a hidden checkbox. Unchecking it collapses it.
+function closeMobileDrawer() {
+  const toggle = document.getElementById('mobile-nav-toggle');
+  if (toggle) toggle.checked = false;
+}
+
+document.addEventListener('click', (e) => {
+  const toggle = document.getElementById('mobile-nav-toggle');
+  if (!toggle || !toggle.checked) return; // drawer not open or not in web mode
+
+  const target = e.target;
+  // Close on: channel list item, server icon, home icon, DM item
+  if (
+    target.closest('#channel-list li:not(.channel-section-label):not(.home-nav-divider-item)') ||
+    target.closest('.server-icon-btn') ||
+    target.closest('.home-icon-btn')
+  ) {
+    // Small delay so the click handler fires before the panel slides away
+    setTimeout(closeMobileDrawer, 80);
+  }
+}, true);
+
 // Deterministic colour from username string (for avatar backgrounds)
