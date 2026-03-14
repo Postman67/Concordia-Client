@@ -327,6 +327,11 @@
   position: relative;
 }
 
+/* Back arrow: hidden everywhere; mobile.css un-hides it inside ≤480px */
+.mobile-back-arrow {
+  display: none;
+}
+
 #channel-header {
   display: flex;
   align-items: center;
