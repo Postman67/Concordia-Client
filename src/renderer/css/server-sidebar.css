@@ -79,8 +79,6 @@
 }
 .server-icon-btn.active {
   border-radius: 30%;
-  background: var(--primary);
-  color: #fff;
 }
 .server-icon-btn img {
   width: 100%;
