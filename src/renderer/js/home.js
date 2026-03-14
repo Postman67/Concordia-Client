@@ -188,6 +188,7 @@ function updateRequestsBadge() {
 
 async function selectConversation(conv) {
   localStorage.setItem('last_home_panel', 'conv:' + conv.id);
+  homePanelHeader.classList.add('hidden');
   // Deactivate sidebar item for previous conversation
   if (activeConversationId) {
     socialSocket?.emit('dm:leave', activeConversationId);
@@ -299,6 +300,8 @@ async function showFriendsPanel() {
   placeholderHome.classList.add('hidden');
   homeFriendsPanel.classList.remove('hidden');
   homeRequestsPanel.classList.add('hidden');
+  homePanelHeader.classList.remove('hidden');
+  homePanelTitle.textContent = 'Friends';
 
   _setActiveHomeNav('home-nav-friends');
 
@@ -402,6 +405,8 @@ async function showRequestsPanel() {
   placeholderDefault.classList.add('hidden');
   placeholderHome.classList.add('hidden');
   homeRequestsPanel.classList.remove('hidden');
+  homePanelHeader.classList.remove('hidden');
+  homePanelTitle.textContent = 'Requests';
 
   _setActiveHomeNav('home-nav-requests');
 

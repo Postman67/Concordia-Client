@@ -183,6 +183,8 @@ const sidebarUser            = document.getElementById('sidebar-user');
 // Home panels
 const homeFriendsPanel  = document.getElementById('home-friends-panel');
 const homeRequestsPanel = document.getElementById('home-requests-panel');
+const homePanelHeader   = document.getElementById('home-panel-header');
+const homePanelTitle    = document.getElementById('home-panel-title');
 
 
 

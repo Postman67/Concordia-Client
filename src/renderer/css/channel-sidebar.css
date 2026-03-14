@@ -228,6 +228,23 @@
 #no-channel-placeholder > #placeholder-home {
   flex-shrink: 0;
 }
+/* Home panel mobile header — mirrors #channel-header */
+#home-panel-header {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 1rem;
+  border-bottom: 1px solid var(--surface1);
+  background: var(--bg);
+  flex-shrink: 0;
+  align-self: stretch;
+  user-select: none;
+}
+#home-panel-title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text);
+}
 /* Panels fill all available height inside the placeholder */
 #no-channel-placeholder > .home-panel {
   align-self: stretch;
@@ -740,7 +757,6 @@
 /* ── Home panels (Friends / Requests) ───────────────────────────────────── */
 .home-panel {
   width: 100%;
-  height: 100%;
   padding: 1.5rem 2rem;
   overflow-y: auto;
   display: flex;

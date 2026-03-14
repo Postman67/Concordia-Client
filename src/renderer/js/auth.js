@@ -203,6 +203,7 @@ btnLogout.addEventListener('click', () => {
   channelView.classList.add('hidden');
   placeholderDefault.classList.remove('hidden');
   placeholderHome.classList.add('hidden');
+  homePanelHeader.classList.add('hidden');
   const _p = placeholderDefault.querySelector('p');
   _p.textContent = 'Select a channel to start chatting';
   _p.style.color = '';

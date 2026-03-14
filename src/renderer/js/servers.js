@@ -541,6 +541,7 @@ async function selectServer(fedServerId, restoreChannelId = null) {
   // Reset placeholder to default view before connecting
   placeholderDefault.classList.remove('hidden');
   placeholderHome.classList.add('hidden');
+  homePanelHeader.classList.add('hidden');
 
   // Reset placeholder to default text before connecting
   noChannelPlaceholder.querySelector('#placeholder-default p').textContent = 'Select a channel to start chatting';
