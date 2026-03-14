@@ -50,6 +50,13 @@
 
 /* ── Phone (≤ 480 px): sidebar drawer + hamburger ──────────────────────── */
 @media (max-width: 480px) {
+  /* Seed -webkit-fill-available on html so the body/screen % chain resolves
+     to the visual viewport height on iOS 12–15.3 */
+  html {
+    height: -webkit-fill-available;
+    height: 100dvh;
+  }
+
   /* Old hamburger button — fully hidden (replaced by inline back-arrow) */
   .mobile-hamburger { display: none !important; }
 
@@ -117,10 +124,29 @@
     min-width: 44px;
   }
 
-  /* iOS home-bar safe area — push message box and user banner up */
-  #message-panel {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+  /* iOS virtual keyboard: prevent whole-app upward shift by sizing to the
+     visual viewport. -webkit-fill-available covers iOS 12–15.3;
+     100dvh covers iOS 15.4+ and Chrome 108+. */
+  .screen {
+    height: -webkit-fill-available;
+    height: 100dvh;
   }
+
+  /* Anchor the message input bar to the visual viewport so it stays visible
+     when the keyboard appears, regardless of any scroll/shift offset. */
+  #message-panel {
+    position: fixed !important;
+    bottom: env(safe-area-inset-bottom, 0px);
+    left: 0;
+    right: 0;
+  }
+
+  /* Extend message list padding to clear the fixed bar + safe area gap */
+  #message-list {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* iOS home-bar safe area for user banner */
   .sidebar-footer {
     margin-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
   }
