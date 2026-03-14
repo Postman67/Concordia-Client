@@ -492,8 +492,9 @@
             <p class="ss-perm-note">0 = disabled (store originals). 1–100 = optimization intensity applied at upload time.</p>
             <div class="ss-field-row">
               <label for="ss-cdn-compress-input">Compression Level</label>
-              <div style="display:flex;align-items:center;gap:0.65rem">
-                <input id="ss-cdn-compress-input" type="number" min="0" max="100" style="width:76px" />
+              <div class="ss-slider-row">
+                <input id="ss-cdn-compress-input" type="range" min="0" max="100" step="1" />
+                <span id="ss-cdn-compress-value" class="ss-slider-value">0</span>
                 <button id="ss-cdn-compress-btn" class="btn-primary btn-sm">Save</button>
                 <p id="ss-cdn-compress-status" class="ss-save-status" style="margin:0;flex:1"></p>
               </div>

@@ -848,8 +848,10 @@ async function loadSSCdn() {
 
   // ── Compression level ────────────────────────────────────────
   const compressInput = document.getElementById('ss-cdn-compress-input');
+  const compressValue = document.getElementById('ss-cdn-compress-value');
   if (compressInput && settingsRes?.media_compression_level != null) {
     compressInput.value = settingsRes.media_compression_level;
+    if (compressValue) compressValue.textContent = settingsRes.media_compression_level;
   }
 
   // ── Health & Metrics ─────────────────────────────────────────
@@ -893,6 +895,12 @@ document.getElementById('ss-cdn-icon-delete-btn')?.addEventListener('click', asy
   } catch (err) {
     setSaveStatus(iconStatus, err.message, true);
   }
+});
+
+// ── Compression slider live value ─────────────────────────────────
+document.getElementById('ss-cdn-compress-input')?.addEventListener('input', function () {
+  const label = document.getElementById('ss-cdn-compress-value');
+  if (label) label.textContent = this.value;
 });
 
 // ── Compression save ──────────────────────────────────────────────

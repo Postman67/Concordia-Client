@@ -546,6 +546,25 @@
 .ss-field-row label { font-size: 0.82rem; color: var(--subtext1); font-weight: 600; }
 .ss-field-row input[type="text"] { width: 100%; max-width: 280px; }
 
+.ss-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+.ss-slider-row input[type="range"] {
+  flex: 1;
+  max-width: 220px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+.ss-slider-value {
+  min-width: 2.2rem;
+  text-align: right;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
 .ss-color-picker {
   width: 44px;
   height: 32px;
