@@ -72,7 +72,7 @@ function appendMessage(msg, doScroll = true) {
     const lastBody = messagesContainer.lastElementChild?.querySelector('.message-body');
     if (lastBody) {
       lastBody.appendChild(buildMsgRow(msg, userId));
-      if (doScroll) scrollToBottom();
+      if (doScroll) scrollToBottom(true);
       return;
     }
   }
@@ -125,7 +125,7 @@ function appendMessage(msg, doScroll = true) {
   el.appendChild(bodyEl);
   messagesContainer.appendChild(el);
 
-  if (doScroll) scrollToBottom();
+  if (doScroll) scrollToBottom(true);
 }
 
 // Builds one .msg-row for a single message (first-in-group and continuations share this)
@@ -314,9 +314,9 @@ async function deleteMsgById(msgId) {
     console.error('[delete msg] failed:', err.message);
   }
 }
-function scrollToBottom() {
+function scrollToBottom(smooth = false) {
   const list = document.getElementById('message-list');
-  list.scrollTop = list.scrollHeight;
+  list.scrollTo({ top: list.scrollHeight, behavior: smooth ? 'smooth' : 'instant' });
 }
 
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•

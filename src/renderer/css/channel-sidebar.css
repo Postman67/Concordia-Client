@@ -354,7 +354,13 @@
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  scroll-behavior: smooth;
+}
+/* Spacer that fills free space above messages, pushing them to the bottom
+   when history is short. Collapses to 0 when content overflows (many msgs). */
+#message-list::before {
+  content: '';
+  flex: 1;
+  min-height: 0;
 }
 
 .load-more-btn {
