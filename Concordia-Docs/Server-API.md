@@ -72,6 +72,8 @@ Joins the authenticated user to this server. Call this when a user adds the serv
 
 > `is_owner` is `true` when the joining user is the server owner (matches `admin_user_id` in settings or the `ADMIN_USER_ID` env var). The owner has every permission enabled regardless of roles.
 
+**First-time joins** broadcast a [`member:joined`](#members-1) event to all connected clients. Subsequent calls (username cache refresh) are silent.
+
 **`401`** Missing/invalid federation token · **`500`** Server error
 
 ---
@@ -97,6 +99,100 @@ Returns the authenticated user's member record, owner flag, and assigned roles. 
 > `is_owner: true` means the user is the server owner and has every permission. Use this to render an owner crown/badge in the client UI.
 
 **`401`** Missing/invalid federation token · **`404`** Not a member of this server · **`500`** Server error
+
+---
+
+### `DELETE /api/server/@me` 🔒
+
+Removes the authenticated user from this server. The server owner cannot leave — they must transfer ownership via `PATCH /api/server/settings` first.
+
+Broadcasts a [`member:left`](#members-1) event to all connected clients.
+
+**`200 OK`**
+```json
+{ "message": "Left server successfully." }
+```
+
+**`401`** Missing/invalid federation token · **`403`** Owner cannot leave · **`404`** Not a member of this server · **`500`** Server error
+
+---
+
+### `POST /api/server/load` 🔒
+
+**Single-call server initialisation.** Replaces the eight separate requests a client would normally make when selecting a server. Upserts the caller into `members` (same as `POST /join`) then fires all data queries in parallel.
+
+> This is the recommended way to load a server. Calling it on every server-select ensures the user's display name and avatar stay in sync with Federation.
+
+**`200 OK`**
+```json
+{
+  "server": {
+    "name": "My Concordia Server",
+    "description": "A place to chat.",
+    "member_count": 42,
+    "icon_url": "/cdn/icon/server.webp"
+  },
+  "me": {
+    "user_id": "a3f8c21d-7e44-4b1c-9f02-3d5e6a8b1c0f",
+    "username": "petersmith",
+    "avatar_url": "https://example.com/avatar.png",
+    "joined_at": "2026-03-07T10:00:00.000Z",
+    "is_owner": false,
+    "roles": [
+      { "id": 2, "name": "Moderators", "color": "#3498db", "position": 1, "permissions": "48", "is_everyone": false }
+    ],
+    "permissions": {
+      "bits": "62",
+      "resolved": {
+        "ADMINISTRATOR": false,
+        "VIEW_CHANNELS": true,
+        "SEND_MESSAGES": true,
+        "READ_MESSAGE_HISTORY": true,
+        "MANAGE_MESSAGES": true,
+        "MANAGE_CHANNELS": false,
+        "MANAGE_CATEGORIES": false,
+        "MANAGE_ROLES": false,
+        "KICK_MEMBERS": false,
+        "BAN_MEMBERS": false,
+        "MANAGE_SERVER": false
+      }
+    }
+  },
+  "members": [
+    {
+      "user_id": "a3f8c21d-7e44-4b1c-9f02-3d5e6a8b1c0f",
+      "username": "petersmith",
+      "avatar_url": "https://example.com/avatar.png",
+      "joined_at": "2026-03-07T10:00:00.000Z",
+      "is_owner": true,
+      "roles": []
+    }
+  ],
+  "channels": [
+    {
+      "id": 1,
+      "name": "general",
+      "description": null,
+      "category_id": 1,
+      "position": 0,
+      "created_at": "2026-03-07T10:00:00.000Z",
+      "category_name": "Text Channels",
+      "category_position": 0
+    }
+  ],
+  "categories": [
+    { "id": 1, "name": "Text Channels", "position": 0, "created_at": "2026-03-07T10:00:00.000Z" }
+  ]
+}
+```
+
+**Notes**
+- `channels` is filtered to only the channels the calling user has `VIEW_CHANNELS` permission for (same as `GET /api/channels`).
+- `me.permissions` reflects server-level effective permissions (no channel override applied); use `GET /api/roles/@me/permissions?channelId=<id>` for channel-specific resolution.
+- If this is the user's first join, a [`member:joined`](#members-1) WebSocket event is broadcast to all connected clients.
+- The HTTP `200` response itself doubles as the health check — no separate `GET /health` call needed.
+
+**`401`** Missing/invalid federation token · **`500`** Server error
 
 ---
 
@@ -835,6 +931,8 @@ These events are broadcast to **all connected clients** whenever an admin or mod
 
 | Event | Payload | Trigger |
 |-------|---------|----|
+| `member:joined` | `{ user_id, username, avatar_url, joined_at, is_owner }` | `POST /api/server/join` (first join only) |
+| `member:left` | `{ user_id, username }` | `DELETE /api/server/@me` |
 | `member:roles_updated` | `{ user_id, roles }` | `PUT /api/roles/members/:userId` |
 #### Roles
 
@@ -861,6 +959,10 @@ socket.on('channel:created',      (ch)       => store.addChannel(ch));
 socket.on('channel:updated',      (ch)       => store.updateChannel(ch));
 socket.on('channel:deleted',      ({ id })   => store.removeChannel(id));
 socket.on('channels:reordered',   (channels) => store.setChannels(channels));
+socket.on('member:joined',             (member)  => store.addMember(member));
+socket.on('member:left',               ({ user_id }) => store.removeMember(user_id));
+socket.on('member:joined',             (member)     => store.addMember(member));
+socket.on('member:left',               ({ user_id }) => store.removeMember(user_id));
 socket.on('member:roles_updated',      (payload) => store.updateMemberRoles(payload));
 socket.on('role:created',              (role)    => store.addRole(role));
 socket.on('role:updated',              (role)    => store.updateRole(role));
@@ -1088,3 +1190,5 @@ The schema and all migrations are applied automatically at startup by the built-
 | `006_permissions.sql` | Roles, member_roles, channel/category permission overrides |
 | `007_server_icon.sql` | Adds `icon` key to server_settings |
 | `008_media_metrics.sql` | `media_metrics` table; adds `media_compression_level` to server_settings |
+| `009_message_edits.sql` | Adds `is_edited` column to `messages` |
+| `010_fix_everyone_permissions.sql` | Corrects `@everyone` permissions bitmask from `7` to `14` (`VIEW_CHANNELS \| SEND_MESSAGES \| READ_MESSAGE_HISTORY`) |

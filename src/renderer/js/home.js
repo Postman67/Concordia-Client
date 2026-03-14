@@ -50,8 +50,8 @@ function restoreLastHomePanel() {
   } else if (last === 'friends') {
     showFriendsPanel();
   } else if (last.startsWith('conv:')) {
-    const convId = parseInt(last.slice(5), 10);
-    const conv = conversations.find(c => c.id === convId);
+    const convId = last.slice(5);
+    const conv = conversations.find(c => String(c.id) === convId);
     if (conv) { selectConversation(conv); }
     // if conversation no longer exists, leave placeholder as-is
   }

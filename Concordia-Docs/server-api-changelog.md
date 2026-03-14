@@ -5,6 +5,40 @@ Most recent changes appear at the top.
 
 ---
 
+## Saturday, March 14, 2026
+
+### `POST /api/server/load` — single-call server initialisation
+- New endpoint that replaces eight separate requests (`POST /join`, `GET /@me`, `GET /info`, `GET /members`, `GET /api/channels`, `GET /api/categories`, `GET /api/roles/@me/permissions`, `GET /health`) with one
+- Upserts the caller into `members` then fires all data queries in parallel; channels filtered by `VIEW_CHANNELS` permission as usual
+- Response contains `server`, `me` (with embedded `permissions`), `members`, `channels`, and `categories`
+- Broadcasts `member:joined` on first join (same as `POST /join`)
+
+---
+
+## Friday, March 13, 2026
+
+### Member join/leave WebSocket events
+- `POST /api/server/join` now broadcasts `member:joined` (`{ user_id, username, avatar_url, joined_at, is_owner }`) to all connected clients on first join; subsequent calls (username cache refresh) are silent
+- New `DELETE /api/server/@me` endpoint — removes the calling user from the server and broadcasts `member:left` (`{ user_id, username }`)
+- The server owner is blocked from leaving (`403`) until ownership is transferred
+
+---
+
+## Saturday, March 7, 2026 — 19:30
+
+### Fix: `@everyone` default permissions
+
+The `@everyone` role was seeded with bitmask `7` by migration `006`, which was written against an older bit layout. With the current layout in `permissions.ts` the value `7` resolves to `ADMINISTRATOR | VIEW_CHANNELS | SEND_MESSAGES` — granting the dangerous `ADMINISTRATOR` bit and omitting `READ_MESSAGE_HISTORY`.
+
+**Correct value is `14`** (`VIEW_CHANNELS=2 | SEND_MESSAGES=4 | READ_MESSAGE_HISTORY=8`).
+
+- `006_permissions.sql` comment and seed value corrected to `14` (affects fresh deployments).
+- `010_fix_everyone_permissions.sql` added — updates the live row from `7` → `14` only if it hasn't been intentionally customised (safe to re-run).
+
+> **Note:** The `EVERYONE_DEFAULT_PERMISSIONS` constant in `permissions.ts` was already correct (`14`) throughout.
+
+---
+
 ## Saturday, March 7, 2026 — 19:00
 
 ### Message Edit & Delete

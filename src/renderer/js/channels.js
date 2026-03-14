@@ -16,28 +16,6 @@ async function fetchMyPermissions() {
   }
 }
 
-async function loadChannels(restoreChannelId = null) {
-  try {
-    const [ch, cats, perms] = await Promise.all([
-      apiGet('/api/channels'),
-      apiGet('/api/categories').catch(() => []),
-      apiGet('/api/roles/@me/permissions').catch(() => null),
-    ]);
-    channels         = ch;
-    serverCategories = cats;
-    myPermissions    = perms;
-    renderChannelList();
-    // Restore last channel if valid, otherwise fall back to first channel
-    const target = (restoreChannelId && channels.find(c => c.id === restoreChannelId))
-      ? restoreChannelId
-      : channels[0]?.id ?? null;
-    if (target) selectChannel(target);
-  } catch (err) {
-    console.error('Failed to load channels:', err);
-    showServerError('Unable to connect to server');
-  }
-}
-
 function showServerError(msg) {
   channelView.classList.add('hidden');
   noChannelPlaceholder.classList.remove('hidden');

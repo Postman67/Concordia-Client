@@ -122,11 +122,7 @@ function renderServerSidebar() {
       btn.textContent = (srv.server_name || srv.server_address).slice(0, 2).toUpperCase();
       btn.style.background = srv.id === activeServerId ? '' : stringToColor(srv.server_name || srv.server_address);
     }
-    btn.addEventListener('click', async () => {
-      // Re-ping this server before connecting (3 s timeout for fast feedback).
-      // This catches servers that went offline after the initial startup check.
-      await _checkOneServer(srv, 3000);
-      if (serverHealthCache[srv.id] === false) return; // offline — icon already greyed
+    btn.addEventListener('click', () => {
       selectServer(srv.id);
     });
 
@@ -605,11 +601,12 @@ async function selectServer(fedServerId, restoreChannelId = null) {
   renderServerSidebar();
   connectSocket();
 
-  // Notify server this user is a member (idempotent), get back the server name and
-  // the caller's effective role in one round-trip.
+  // Single call: joins/refreshes the member record and returns all server data at once.
   try {
-    const joinRes = await apiPost('/api/server/join', {});
-    const realName = joinRes?.server?.name;
+    const load = await apiPost('/api/server/load', {});
+
+    // Server metadata
+    const realName = load.server?.name;
     if (realName) {
       serverNameLabel.textContent = realName;
       if (srv.server_name !== realName) {
@@ -617,38 +614,44 @@ async function selectServer(fedServerId, restoreChannelId = null) {
         fedPatch(`/api/servers/${fedServerId}`, { server_name: realName }).catch(() => {});
       }
     }
-    // is_owner (new API) or is_admin (old API) determines admin access
-    const joinOwner = joinRes?.is_owner ?? joinRes?.is_admin;
-    if (joinOwner != null) currentUserRole = joinOwner ? 'admin' : 'member';
-    else if (joinRes?.role) currentUserRole = joinRes.role; // legacy fallback
-  } catch (_) {}
+    if (load.server?.icon_url) updateServerHeaderIcon(load.server.icon_url);
 
-  // Confirm owner/role via GET /api/server/@me (is_owner overrides any cached role).
-  try {
-    const me = await apiGet('/api/server/@me');
-    const meOwner = me?.is_owner ?? me?.is_admin;
-    if (meOwner != null) currentUserRole = meOwner ? 'admin' : 'member';
-    else currentUserRole = me?.effective_role ?? me?.role ?? currentUserRole;
-    // Server mirrors the Federation avatar — seed the cache so messages show our PFP
-    if (me?.avatar_url) avatarCache[String(currentUser.id)] = me.avatar_url;
-  } catch (_) { /* keep role from join response */ }
+    // My role & permissions
+    const isOwner = load.me?.is_owner ?? false;
+    currentUserRole = isOwner ? 'admin' : 'member';
+    if (load.me?.avatar_url) avatarCache[String(currentUser.id)] = load.me.avatar_url;
+    myPermissions = load.me?.permissions
+      ? { ...load.me.permissions, is_owner: isOwner }
+      : null;
 
-  ctxServerSettings.style.display = currentUserRole === 'admin' ? '' : 'none';
-
-  // Fetch server icon and load members in parallel (background — non-blocking)
-  apiGet('/api/server/info').then(info => {
-    if (info?.icon_url) updateServerHeaderIcon(info.icon_url);
-  }).catch(() => {});
-
-  apiGet('/api/server/members').then(({ members }) => {
-    serverMembers = members ?? [];
+    // Members
+    serverMembers = load.members ?? [];
     serverMembers.forEach(m => {
       if (m.avatar_url) avatarCache[String(m.user_id)] = m.avatar_url;
     });
-    renderMembersPane();
-  }).catch(() => {});
 
-  await loadChannels(channelToRestore);
+    // Channels & categories
+    channels         = load.channels   ?? [];
+    serverCategories = load.categories ?? [];
+
+    ctxServerSettings.style.display = currentUserRole === 'admin' ? '' : 'none';
+    renderMembersPane();
+    renderChannelList();
+
+    const target = (channelToRestore && channels.find(c => c.id === channelToRestore))
+      ? channelToRestore
+      : channels[0]?.id ?? null;
+    if (target) selectChannel(target);
+
+    // Successful response confirms server is online
+    serverHealthCache[fedServerId] = true;
+    _applyServerHealthState(fedServerId, true);
+  } catch (err) {
+    console.error('Failed to load server:', err);
+    serverHealthCache[fedServerId] = false;
+    _applyServerHealthState(fedServerId, false);
+    showServerError('Unable to connect to server');
+  }
 }
 
 function buildServerUrl(address) {
