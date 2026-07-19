@@ -9,6 +9,9 @@
 
   let authed = false;
   if (savedToken && savedUser) {
+    // Restore the refresh token first so an expired identity token can be
+    // rotated transparently by the first 401 instead of forcing a re-login.
+    refreshToken = localStorage.getItem('auth_refresh_token');
     await onAuthenticated(savedToken, savedUser, { showChatNow: false });
     authed = !!token; // null if fedGet triggered a 401 logout
   }

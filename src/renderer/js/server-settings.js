@@ -870,7 +870,7 @@ document.getElementById('ss-cdn-icon-input')?.addEventListener('change', async (
     // Do NOT set Content-Type — the browser must set it (with the multipart boundary)
     const res = await fetch(`${activeServerUrl}/api/upload/icon`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${await getServerToken(activeServerUrl)}` },
       body: formData,
     });
     const json = await res.json();

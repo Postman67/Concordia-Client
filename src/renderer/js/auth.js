@@ -18,6 +18,8 @@ loginForm.addEventListener('submit', async (e) => {
   const password = document.getElementById('login-password').value;
   try {
     const data = await fedPost('/api/auth/login', { email, password });
+    if (data.mfa_required) return showMfaPrompt(data.mfa_token);
+    storeRefreshToken(data.refresh_token);
     onAuthenticated(data.token, data.user);
   } catch (err) {
     loginError.textContent = err.message;
@@ -32,11 +34,64 @@ registerForm.addEventListener('submit', async (e) => {
   const password = document.getElementById('reg-password').value;
   try {
     const data = await fedPost('/api/auth/register', { username, email, password });
+    storeRefreshToken(data.refresh_token);
     onAuthenticated(data.token, data.user);
   } catch (err) {
     regError.textContent = err.message;
   }
 });
+
+function storeRefreshToken(rt) {
+  refreshToken = rt ?? null;
+  if (rt) localStorage.setItem('auth_refresh_token', rt);
+  else    localStorage.removeItem('auth_refresh_token');
+}
+
+// ─── TOTP 2FA step ────────────────────────────────────────────────────────────
+// Injected on demand so index.html stays untouched; inherits .auth-form styles.
+let _mfaForm = null;
+function showMfaPrompt(mfaToken) {
+  loginForm.classList.add('hidden');
+  registerForm.classList.add('hidden');
+
+  if (!_mfaForm) {
+    _mfaForm = document.createElement('form');
+    _mfaForm.className = 'auth-form';
+    _mfaForm.innerHTML =
+      '<input id="mfa-code" type="text" inputmode="numeric" autocomplete="one-time-code" ' +
+      'placeholder="6-digit code or backup code" required />' +
+      '<button type="submit" class="btn-primary">Verify</button>' +
+      '<p class="error-msg" id="mfa-error"></p>';
+    loginForm.parentElement.appendChild(_mfaForm);
+  }
+
+  _mfaForm.dataset.mfaToken = mfaToken;
+  _mfaForm.classList.remove('hidden');
+  _mfaForm.querySelector('#mfa-code').value = '';
+  _mfaForm.querySelector('#mfa-error').textContent = '';
+  _mfaForm.querySelector('#mfa-code').focus();
+
+  if (!_mfaForm.dataset.bound) {
+    _mfaForm.dataset.bound = '1';
+    _mfaForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errEl = _mfaForm.querySelector('#mfa-error');
+      errEl.textContent = '';
+      try {
+        const data = await fedPost('/api/auth/mfa/verify', {
+          mfa_token: _mfaForm.dataset.mfaToken,
+          code: _mfaForm.querySelector('#mfa-code').value.trim(),
+        });
+        _mfaForm.classList.add('hidden');
+        loginForm.classList.remove('hidden');
+        storeRefreshToken(data.refresh_token);
+        onAuthenticated(data.token, data.user);
+      } catch (err) {
+        errEl.textContent = err.message;
+      }
+    });
+  }
+}
 
 async function onAuthenticated(jwt, user, { showChatNow = true } = {}) {
   token = jwt;
@@ -162,6 +217,22 @@ function handleSessionExpired() {
 }
 
 btnLogout.addEventListener('click', () => {
+  // Real logout: blacklist the identity token's jti and revoke the refresh
+  // token server-side (fire-and-forget — local teardown proceeds regardless).
+  if (token) {
+    fetch(`${FEDERATION_URL}/api/auth/logout`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(refreshToken ? { refresh_token: refreshToken } : {}),
+      keepalive: true,
+    }).catch(() => {});
+  }
+  refreshToken = null;
+  Object.keys(serverTokenCache).forEach(k => delete serverTokenCache[k]);
+  localStorage.removeItem('auth_refresh_token');
   localStorage.removeItem('auth_token');
   localStorage.removeItem('auth_user');
   localStorage.removeItem('last_server_id');

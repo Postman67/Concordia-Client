@@ -11,8 +11,16 @@ if (!window.concordia) {
   window.concordia = {
     createSocket(serverUrl, token) {
       const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const platform = isMobile ? 'mobile_web' : 'web';
+      // `token` may be a string or a (possibly async) provider function —
+      // re-evaluated per connection attempt so expired short-lived server
+      // tokens are refreshed transparently on reconnect.
       const socket = io(serverUrl, {
-        auth: { token, platform: isMobile ? 'mobile_web' : 'web' },
+        auth: (cb) => {
+          Promise.resolve(typeof token === 'function' ? token() : token)
+            .then((t) => cb({ token: t, platform }))
+            .catch(() => cb({ token: null, platform }));
+        },
         transports: ['websocket'],
         autoConnect: true,
       });

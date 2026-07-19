@@ -1,9 +1,20 @@
 ﻿//  Socket.IO
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-function connectSocket() {
+async function connectSocket() {
   if (!activeServerUrl) return;
-  socket = window.concordia.createSocket(activeServerUrl, token);
+  // Chat servers only ever receive a short-lived token scoped to their own
+  // origin — never the Federation identity token. Pass a provider (not a
+  // value) so reconnects after token expiry fetch a fresh one.
+  const urlAtConnect = activeServerUrl;
+  try {
+    await getServerToken(urlAtConnect);  // fail fast before opening the socket
+  } catch (err) {
+    console.error('[socket] failed to get server token:', err.message);
+    showServerError('Unable to authorize with server');
+    return;
+  }
+  socket = window.concordia.createSocket(urlAtConnect, () => getServerToken(urlAtConnect));
 
   socket.on('connect', () => {
     console.log('[socket] connected to', activeServerUrl);

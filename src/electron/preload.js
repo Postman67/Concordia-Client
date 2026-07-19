@@ -9,9 +9,16 @@ contextBridge.exposeInMainWorld('concordia', {
   // ─── Socket factory ────────────────────────────────────────────────────────
   // Returns a lightweight proxy so the renderer can communicate over Socket.IO
   // without having direct access to the socket object.
+  // `token` may be a string or a (possibly async) provider function — the
+  // provider is re-evaluated on every connection attempt, so reconnects after
+  // a short-lived server token expires pick up a fresh one automatically.
   createSocket(serverUrl, token) {
     const socket = io(serverUrl, {
-      auth: { token, platform: 'desktop' },
+      auth: (cb) => {
+        Promise.resolve(typeof token === 'function' ? token() : token)
+          .then((t) => cb({ token: t, platform: 'desktop' }))
+          .catch(() => cb({ token: null, platform: 'desktop' }));
+      },
       transports: ['websocket'],
       autoConnect: true,
     });

@@ -9,7 +9,9 @@
 const FEDERATION_URL = 'https://federation.concordiachat.com';
 
 // â”€â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-let token          = null;
+let token          = null;    // Federation identity token — NEVER sent to chat servers
+let refreshToken   = null;    // rotating refresh token — only ever sent to /api/auth/refresh|logout
+const serverTokenCache = {};  // server origin → { token, expiresAt } (short-lived, aud-scoped)
 let currentUser    = null;    // { id, username, email }
 let userSettings   = null;    // { display_name, avatar_url, theme }
 let userServers    = [];      // [{ id, server_address, server_name, position }]
